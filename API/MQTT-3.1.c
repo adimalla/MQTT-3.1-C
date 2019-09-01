@@ -37,16 +37,16 @@
 
 #include <mqtt_client.h>
 
+
 /* @brief MACRO defines */
 #define DEBUG 	  1
 #define DEBUG_ALL 0
 
 #define PORT 1883
 
-#define FIXED_HEADER_LENGTH   2
-#define PROTOCOL_NAME_LENGTH  6
-#define CLIENT_NAME_LENGTH    23
-#define TOPIC_LENGTH          40
+
+
+#define TOPIC_LENGTH          40U
 
 #pragma pack(1)
 
@@ -111,12 +111,14 @@ typedef struct mqtt_disconnect
 }mqtt_disconnect_t;
 
 
+
+
 int main()
 {
 	int client_sfd;
 	struct sockaddr_in server_addr;
 
-	mqtt_connect_t    *connect_msg;
+	mqtt_client_t publisher;
 	mqtt_connack_t    *connack_msg;
 	mqtt_publish_t    *publish_msg;
 	mqtt_disconnect_t *disconnect_msg;
@@ -149,24 +151,15 @@ int main()
 
 
 	/* Fill mqtt CONNECT message structure */
-	connect_msg = (void *)&message;
+	publisher.connect_msg = (void *)&message;
 
-	connect_msg->fixed_header.message_type = 0x01;     //fixed
-	connect_msg->protocol_name_length 	 = htons(6);   //fixed
+	publisher.connect_msg->connect_flags.clean_session = ENABLE;
 
-	strncpy(connect_msg->protocol_name,"MQIsdp", 6);
+	publisher.mqtt_message_length = mqtt_connect(&publisher, my_client_name);
 
-	connect_msg->protocol_version = 3;
-	connect_msg->connect_flags.clean_session = 0x01;
-	connect_msg->keep_alive_value = htons(60);
-
-	connect_msg->client_id_length = htons(23);         //length is fixed
-	strcpy(connect_msg->client_id, my_client_name);
-
-	connect_msg->fixed_header.message_length = 37;
 
 	/* Send mqtt packet through socket API */
-	write(client_sfd, (char*)connect_msg, connect_msg->fixed_header.message_length + FIXED_HEADER_LENGTH);
+	write(client_sfd, (char*)publisher.connect_msg, publisher.mqtt_message_length);
 
 #if DEBUG
 	printf("%s :Sending CONNECT\n", my_client_name);
@@ -183,9 +176,9 @@ int main()
 
 	pub_message = "65 F";
 	strncpy(publish_msg->payload, pub_message, strlen(pub_message));
-	pub_message_length = strlen(pub_message);
+	pub_message_length = (uint8_t)strlen(pub_message);
 
-	publish_msg->message_length = pub_message_length + TOPIC_LENGTH + 2;
+	publish_msg->message_length = (uint8_t)(pub_message_length + TOPIC_LENGTH);
 
 #if DEBUG_ALL
 	printf("topic:%s, len:%ld\n", publish_msg->topic_name, strlen(publish_msg->topic_name));
@@ -214,7 +207,7 @@ int main()
 			printf("%s :Connection Accepted\n", my_client_name);
 #endif
 			/* @brief send publish message */
-			write(client_sfd, message, publish_msg->message_length + FIXED_HEADER_LENGTH);
+			write(client_sfd, message, (size_t)(publish_msg->message_length + FIXED_HEADER_LENGTH));
 
 #if DEBUG || DEBUG_ALL
 			printf("%s :Sending PUBLISH(\"%s\",...(%d bytes))\n", my_client_name, publish_msg->topic_name, pub_message_length);
@@ -227,7 +220,7 @@ int main()
 			disconnect_msg->control_packet.message_type = 14;
 			disconnect_msg->message_length = 0;
 
-			write(client_sfd, message, disconnect_msg->message_length + FIXED_HEADER_LENGTH);
+			write(client_sfd, message, (size_t)(disconnect_msg->message_length + FIXED_HEADER_LENGTH));
 
 #if DEBUG || DEBUG_ALL
 			printf("%s :Sending DISCONNECT\n",my_client_name);
