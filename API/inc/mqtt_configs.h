@@ -36,11 +36,20 @@
 /*                                                                            */
 /******************************************************************************/
 
+#define ENABLE  1
+#define DISABLE 0
+#define GCC     1
 
 
+#define MQTT_CONNECT_MESSAGE  1U
+#define FIXED_HEADER_LENGTH   2U
 
+#define PROTOCOL_NAME_LENGTH  6U
+#define PROTOCOL_NAME         "MQIsdp"
 
+#define PROTOCOL_VERSION      3U
 
+#define CLIENT_ID_LENGTH      23U
 
 
 #endif /* INC_MQTT_CONFIGS_H_ */
