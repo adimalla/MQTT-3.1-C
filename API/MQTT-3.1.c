@@ -35,6 +35,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <mqtt_client.h>
 
 /* @brief MACRO defines */
 #define DEBUG 	  1
@@ -53,30 +54,15 @@
 /* @brief Fixed Header */
 typedef struct mqtt_fixed_header
 {
-	//uint8_t message_flag : 4; /*!< LSB */
+
     uint8_t retain_flag  : 1;
     uint8_t qos_level    : 2;
     uint8_t dup_flag     : 1;
-
 	uint8_t message_type : 4; /*!< MSB */
 
 }mqtt_fixed_header_t;
 
 
-/* @brief MQTT CONNECT structure */
-typedef struct mqtt_connect
-{
-	mqtt_fixed_header_t control_packet;
-	uint8_t  message_length;
-	uint16_t protocol_name_length;
-	char  protocol_name[6];
-	uint8_t  protocol_version;
-	uint8_t  connect_flags;
-	uint16_t keep_alive_value;
-	uint16_t client_id_length;
-	char  client_name[23];
-
-}mqtt_connect_t;
 
 
 /* @brief MQTT CONNACK structure */
@@ -97,7 +83,7 @@ typedef struct mqtt_publish
 	uint8_t  message_length;
 	uint16_t topic_length;
 	char  topic_name[40];
-	uint8_t  payload[100];
+	char  payload[100];
 
 }mqtt_publish_t;
 
@@ -125,11 +111,8 @@ typedef struct mqtt_disconnect
 }mqtt_disconnect_t;
 
 
-
-
 int main()
 {
-
 	int client_sfd;
 	struct sockaddr_in server_addr;
 
@@ -140,29 +123,11 @@ int main()
 
 	char message[2000]     = {0};
 	char read_buffer[1500] = {0};
-	char *my_client_name   = "mosqpub|1234-adityamall";
+	char *my_client_name   = "pub|1234-adityamall";
 	char *my_client_topic  = "temperature/device1";
 	char *pub_message;
 	uint8_t pub_message_length;
 
-	/* Fill mqtt CONNECT message structure */
-	connect_msg = (void *)&message;
-
-    printf("Address of message:%p vs of Adress of &message:%p\n", message, &message);
-
-	connect_msg->control_packet.message_type = 0x01;
-	connect_msg->protocol_name_length 	 = htons(6);
-
-	strncpy(connect_msg->protocol_name,"MQIsdp", 6);
-
-	connect_msg->protocol_version = 3;
-	connect_msg->connect_flags    = 0x02;
-	connect_msg->keep_alive_value = htons(60);
-
-	connect_msg->client_id_length = htons(23);
-	strcpy(connect_msg->client_name, my_client_name);
-
-	connect_msg->message_length = 37;
 
 	/* client socket */
 	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
@@ -182,8 +147,26 @@ int main()
 		return -1;
 	}
 
-	/* Send mqtt packet */
-	write(client_sfd, message, connect_msg->message_length + FIXED_HEADER_LENGTH);
+
+	/* Fill mqtt CONNECT message structure */
+	connect_msg = (void *)&message;
+
+	connect_msg->fixed_header.message_type = 0x01;     //fixed
+	connect_msg->protocol_name_length 	 = htons(6);   //fixed
+
+	strncpy(connect_msg->protocol_name,"MQIsdp", 6);
+
+	connect_msg->protocol_version = 3;
+	connect_msg->connect_flags.clean_session = 0x01;
+	connect_msg->keep_alive_value = htons(60);
+
+	connect_msg->client_id_length = htons(23);         //length is fixed
+	strcpy(connect_msg->client_id, my_client_name);
+
+	connect_msg->fixed_header.message_length = 37;
+
+	/* Send mqtt packet through socket API */
+	write(client_sfd, (char*)connect_msg, connect_msg->fixed_header.message_length + FIXED_HEADER_LENGTH);
 
 #if DEBUG
 	printf("%s :Sending CONNECT\n", my_client_name);
