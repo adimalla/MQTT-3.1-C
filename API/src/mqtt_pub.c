@@ -1,0 +1,135 @@
+/**
+ ******************************************************************************
+ * @file    pub_mqtt.c, file name will change
+ * @author  Aditya Mall,
+ * @brief   Example MQTT publish client, for mosquitto MQTT Broker
+ *
+ *  Info
+ *          Only for testing, (POSIX compatible only.)
+ *
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; COPYRIGHT(c) 2019 Aditya Mall </center></h2>
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************
+ */
+
+
+/*
+ * Standard Header and API Header files
+ */
+#include <stdint.h>
+#include <string.h>
+#include "mqtt_configs.h"
+#include "mqtt_client.h"
+#include <stdio.h>
+
+
+
+
+
+
+/******************************************************************************/
+/*                                                                            */
+/*                              API Functions                                 */
+/*                                                                            */
+/******************************************************************************/
+
+
+
+
+static uint16_t mqtt_htons(uint16_t value)
+{
+	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
+
+	return value;
+}
+
+
+
+
+/*
+ * @brief  Configures mqtt connect message structure.
+ * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
+ * @param  client_name : Name of the mqtt client given by user.
+ * @retval size_t      : Length of connect message.
+ */
+
+size_t mqtt_connect(mqtt_client_t *client, char *client_name)
+{
+
+	size_t message_length;
+
+	client->connect_msg->fixed_header.message_type  = MQTT_CONNECT_MESSAGE;
+	client->connect_msg->protocol_name_length 	    = mqtt_htons(PROTOCOL_NAME_LENGTH);
+
+	strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
+
+	client->connect_msg->protocol_version = PROTOCOL_VERSION;
+	client->connect_msg->keep_alive_value = mqtt_htons(60);
+	client->connect_msg->client_id_length = mqtt_htons(CLIENT_ID_LENGTH);
+
+	strcpy(client->connect_msg->client_id, client_name);
+
+	message_length = sizeof(mqtt_connect_t);
+
+	client->connect_msg->fixed_header.message_length = (uint8_t)( (message_length - FIXED_HEADER_LENGTH) );
+
+	return message_length;
+}
+
+
+
+
+
+
+
+#if 0
+static char *reverse_string(const char *string_value)
+{
+	int8_t i = 0, j = 0;           /*!< Loop Variables        */
+
+	uint8_t     string_length;     /*!< Length of string      */
+	static char *string_reversed;  /*!< Reversed string value */
+
+	/*@brief check if string is not NULL, if yes, return NULL and exit */
+	if(string_value == NULL)
+	{
+		return NULL;
+	}
+
+	/*@brief Calculate String Length and specify size of fixed memory allocator array */
+	string_length = strlen(string_value);
+
+	char fixed_mem_alloc[string_length];
+
+	string_reversed = fixed_mem_alloc;
+
+	memset(string_reversed, 0, string_length);
+
+	/*@brief reverse string */
+	for(i = string_length - 1; i >= 0; i--)
+	{
+		string_reversed[j++] = string_value[i];
+	}
+
+	printf("reverse string :%s\n", string_reversed);
+
+	return string_reversed;
+
+}
+#endif
+
+
