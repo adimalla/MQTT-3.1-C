@@ -111,6 +111,12 @@ typedef struct mqtt_client
 /******************************************************************************/
 
 
+/*
+ * @brief  Configures mqtt connect message structure.
+ * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
+ * @param  client_name : Name of the mqtt client given by user.
+ * @retval size_t      : Length of connect message.
+ */
 size_t mqtt_connect(mqtt_client_t *client, char *client_name);
 
 
