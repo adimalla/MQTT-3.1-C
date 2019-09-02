@@ -68,22 +68,27 @@ typedef struct mqtt_connect_flags
 	uint8_t will_qos        : 2;  /*!< Enable qos (quality of service) option           */
 	uint8_t will_retain     : 1;  /*!< Enable retain option                             */
 	uint8_t password_flag   : 1;  /*!< Enable password option                           */
-	uint8_t username_flag   : 1;  /*!< Enable user name option                          */
+	uint8_t user_name_flag  : 1;  /*!< Enable user name option                          */
 
 }mqtt_connect_flags_t;
 
+/* TODO test username password */
 
 /* Main MQTT Connect Structure */
 typedef struct mqtt_connect
 {
-	mqtt_header_t        fixed_header;                         /*!< MQTT Fixed Header                              */
-	uint16_t             protocol_name_length;                 /*!< MQTT Protocol Name Length                      */
-	char                 protocol_name[PROTOCOL_NAME_LENGTH];  /*!< MQTT Protocol Name,length defined in configs.h */
-	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                          */
-	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                          */
-	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                        */
-	uint16_t             client_id_length;                     /*!< Client ID Length                               */
-	char                 client_id[CLIENT_ID_LENGTH];          /*!< Client ID, length defined in config.h          */
+	mqtt_header_t        fixed_header;                         /*!< MQTT Fixed Header                                 */
+	uint16_t             protocol_name_length;                 /*!< MQTT Protocol Name Length                         */
+	char                 protocol_name[PROTOCOL_NAME_LENGTH];  /*!< MQTT Protocol Name,length defined in configs.h    */
+	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                             */
+	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                             */
+	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                           */
+	uint16_t             client_id_length;                     /*!< Client ID Length                                  */
+	char                 client_id[CLIENT_ID_LENGTH];          /*!< Client ID, length defined in mqtt_config.h        */
+	uint16_t             user_name_length;                     /*!< Client User Name Length                           */
+	char                 user_name[USER_NAME_LENGTH];          /*!< Client User Name, length defined in mqtt_config.h */
+	uint16_t             password_length;                      /*!< Client Password Length                            */
+	char                 password[PASSWORD_LENGTH];            /*!< Client Password, length defined in mqtt_config.h  */
 
 }mqtt_connect_t;
 
@@ -96,7 +101,6 @@ typedef struct mqtt_client_handle
 	//mqtt_connack_t *connack_msg;
 	//mqtt_publish_t *publish_msg;
 
-	//size_t mqtt_message_length;
 
 }mqtt_client_t;
 
@@ -110,6 +114,19 @@ typedef struct mqtt_client_handle
 /******************************************************************************/
 
 
+
+
+/*
+ * @brief  Configures mqtt client user name and password.
+ * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
+ * @param  user_name : mqtt client user name
+ * @param  password  : mqtt client password
+ * @retval uint8_t   : 1 = Success, 0 = Failure
+ */
+uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password);
+
+
+
 /*
  * @brief  Configures mqtt connect message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
@@ -118,6 +135,8 @@ typedef struct mqtt_client_handle
  * @retval size_t          : Length of connect message.
  */
 size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time);
+
+
 
 
 #endif /* MQQT_CLIENT_H_ */
