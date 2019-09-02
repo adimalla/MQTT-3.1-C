@@ -48,7 +48,7 @@
 
 #define TOPIC_LENGTH          40U
 
-#pragma pack(1)
+//#pragma pack(1)
 
 
 /* @brief Fixed Header */
@@ -68,8 +68,7 @@ typedef struct mqtt_fixed_header
 /* @brief MQTT CONNACK structure */
 typedef struct mqtt_connack
 {
-	mqtt_fixed_header_t control_packet;
-	uint8_t message_length;
+	mqtt_header_t fixed_header;
 	uint8_t connect_ack_flags;
 	uint8_t return_code;
 
@@ -118,6 +117,8 @@ int main()
 	int client_sfd;
 	struct sockaddr_in server_addr;
 
+	size_t message_length;
+
 	mqtt_client_t publisher;
 	mqtt_connack_t    *connack_msg;
 	mqtt_publish_t    *publish_msg;
@@ -127,9 +128,12 @@ int main()
 	char read_buffer[1500] = {0};
 	char *my_client_name   = "pub|1234-adityamall";
 	char *my_client_topic  = "temperature/device1";
+	char user_name[]       = "device1.sensor";
+	char pass_word[]       = "1234";
 	char *pub_message;
 	uint8_t pub_message_length;
 
+	int retval = 0;
 
 	/* client socket */
 	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
@@ -155,15 +159,23 @@ int main()
 
 	publisher.connect_msg->connect_flags.clean_session = ENABLE;
 
-	publisher.mqtt_message_length = mqtt_connect(&publisher, my_client_name);
+	retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
+	if(retval == 1)
+	{
+		message_length = mqtt_connect(&publisher, my_client_name, 60);
 
-
-	/* Send mqtt packet through socket API */
-	write(client_sfd, (char*)publisher.connect_msg, publisher.mqtt_message_length);
+		/* Send mqtt packet through socket API */
+		write(client_sfd, (char*)publisher.connect_msg, message_length);
 
 #if DEBUG
 	printf("%s :Sending CONNECT\n", my_client_name);
 #endif
+
+	}
+
+
+
+
 
 	/* Fill mqtt PUBLISH message strcuture */
 	memset(message, '\0', sizeof(message));
@@ -194,7 +206,7 @@ int main()
 	{
 
 #if DEBUG || DEBUG_ALL
-		if(connack_msg->control_packet.message_type == 2)
+		if(connack_msg->fixed_header.message_type == 2)
 		{
 			printf("%s :Received CONNACK\n", my_client_name);
 		}
