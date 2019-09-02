@@ -48,7 +48,7 @@
 
 #define TOPIC_LENGTH          40U
 
-#pragma pack(1)
+//#pragma pack(1)
 
 
 /* @brief Fixed Header */
@@ -118,6 +118,8 @@ int main()
 	int client_sfd;
 	struct sockaddr_in server_addr;
 
+	size_t message_length;
+
 	mqtt_client_t publisher;
 	mqtt_connack_t    *connack_msg;
 	mqtt_publish_t    *publish_msg;
@@ -155,11 +157,11 @@ int main()
 
 	publisher.connect_msg->connect_flags.clean_session = ENABLE;
 
-	publisher.mqtt_message_length = mqtt_connect(&publisher, my_client_name);
+	message_length = mqtt_connect(&publisher, my_client_name, 60);
 
 
 	/* Send mqtt packet through socket API */
-	write(client_sfd, (char*)publisher.connect_msg, publisher.mqtt_message_length);
+	write(client_sfd, (char*)publisher.connect_msg, message_length);
 
 
 #if DEBUG
