@@ -67,7 +67,7 @@ static uint16_t mqtt_htons(uint16_t value)
  * @retval size_t      : Length of connect message.
  */
 
-size_t mqtt_connect(mqtt_client_t *client, char *client_name)
+size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time)
 {
 
 	size_t message_length;
@@ -78,11 +78,12 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name)
 	strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
 
 	client->connect_msg->protocol_version = PROTOCOL_VERSION;
-	client->connect_msg->keep_alive_value = mqtt_htons(60);
+	client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
 	client->connect_msg->client_id_length = mqtt_htons(CLIENT_ID_LENGTH);
 
 	strcpy(client->connect_msg->client_id, client_name);
 
+	/* @brief calculate message length, fixed (Can be a constant) */
 	message_length = sizeof(mqtt_connect_t);
 
 	client->connect_msg->fixed_header.message_length = (uint8_t)( (message_length - FIXED_HEADER_LENGTH) );
