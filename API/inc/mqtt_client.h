@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include "mqtt_configs.h"
 
-
+#pragma pack(1)
 
 /******************************************************************************/
 /*                                                                            */
@@ -62,17 +62,17 @@ typedef struct mqtt_header
 /* Connect Flags bit fields */
 typedef struct mqtt_connect_flags
 {
-	uint8_t reserved        : 1;
-	uint8_t clean_session   : 1;
-	uint8_t will_flag       : 1;
-	uint8_t will_qos        : 2;
-	uint8_t will_retain     : 1;
-	uint8_t password_flag   : 1;
-	uint8_t username_flag   : 1;
+	uint8_t reserved        : 1;  /*!< Reserved not set                                 */
+	uint8_t clean_session   : 1;  /*!< Clean / New session, previous history is deleted */
+	uint8_t will_flag       : 1;  /*!< Flag for enabling the qos and retain options     */
+	uint8_t will_qos        : 2;  /*!< Enable qos (quality of service) option           */
+	uint8_t will_retain     : 1;  /*!< Enable retain option                             */
+	uint8_t password_flag   : 1;  /*!< Enable password option                           */
+	uint8_t username_flag   : 1;  /*!< Enable user name option                          */
 
 }mqtt_connect_flags_t;
 
-#pragma pack(1)
+
 /* Main MQTT Connect Structure */
 typedef struct mqtt_connect
 {
@@ -89,17 +89,16 @@ typedef struct mqtt_connect
 
 
 
-
-typedef struct mqtt_client
+/* @brief MQTT client handle structure */
+typedef struct mqtt_client_handle
 {
 	mqtt_connect_t *connect_msg;
 	//mqtt_connack_t *connack_msg;
 	//mqtt_publish_t *publish_msg;
 
-	size_t mqtt_message_length;
+	//size_t mqtt_message_length;
 
 }mqtt_client_t;
-
 
 
 
@@ -113,11 +112,12 @@ typedef struct mqtt_client
 
 /*
  * @brief  Configures mqtt connect message structure.
- * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
- * @param  client_name : Name of the mqtt client given by user.
- * @retval size_t      : Length of connect message.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @param  client_name     : Name of the mqtt client given by user.
+ * @param  keep_alive_time : Keep Alive time for the client.
+ * @retval size_t          : Length of connect message.
  */
-size_t mqtt_connect(mqtt_client_t *client, char *client_name);
+size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time);
 
 
 #endif /* MQQT_CLIENT_H_ */
