@@ -54,8 +54,6 @@ static uint16_t mqtt_htons(uint16_t value)
 
 
 
-
-
 /*
  * @brief  Configures mqtt client user name and password.
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
@@ -127,6 +125,11 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 
+
+
+
+
+
 #if 0
 static char *reverse_string(const char *string_value)
 {
@@ -156,7 +159,6 @@ static char *reverse_string(const char *string_value)
 		string_reversed[j++] = string_value[i];
 	}
 
-	printf("reverse string :%s\n", string_reversed);
 
 	return string_reversed;
 
