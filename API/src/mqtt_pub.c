@@ -54,8 +54,6 @@ static uint16_t mqtt_htons(uint16_t value)
 
 
 
-
-
 /*
  * @brief  Configures mqtt client user name and password.
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
@@ -94,7 +92,7 @@ uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char
 
 
 /*
- * @brief  Configures mqtt connect message structure.
+ * @brief  Configures mqtt CONNECT message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
  * @param  client_name     : Name of the mqtt client given by user.
  * @param  keep_alive_time : Keep Alive time for the client.
@@ -123,6 +121,27 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 	return message_length;
 }
+
+
+/*
+ * @brief  Configures mqtt DISCONNECT message structure.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t          : Length of disconnect message.
+ */
+size_t mqtt_disconnect(mqtt_client_t *client)
+{
+
+	size_t message_length = 0;
+
+	client->disconnect_msg->fixed_header.message_type = MQTT_DISCONNECT_MESSAGE;
+
+	message_length = sizeof(mqtt_disconnect_t);
+
+	client->disconnect_msg->fixed_header.message_length = (uint8_t)(message_length - FIXED_HEADER_LENGTH);
+
+	return message_length;
+}
+
 
 
 
@@ -156,7 +175,6 @@ static char *reverse_string(const char *string_value)
 		string_reversed[j++] = string_value[i];
 	}
 
-	printf("reverse string :%s\n", string_reversed);
 
 	return string_reversed;
 

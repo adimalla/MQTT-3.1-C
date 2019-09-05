@@ -46,33 +46,21 @@
 
 
 
-#define TOPIC_LENGTH          40U
+#define TOPIC_LENGTH          40
 
-//#pragma pack(1)
-
+#define pragma pack(1)
 
 /* @brief Fixed Header */
 typedef struct mqtt_fixed_header
 {
 
-    uint8_t retain_flag  : 1;
-    uint8_t qos_level    : 2;
-    uint8_t dup_flag     : 1;
+	uint8_t retain_flag  : 1;
+	uint8_t qos_level    : 2;
+	uint8_t dup_flag     : 1;
 	uint8_t message_type : 4; /*!< MSB */
 
 }mqtt_fixed_header_t;
 
-
-
-
-/* @brief MQTT CONNACK structure */
-typedef struct mqtt_connack
-{
-	mqtt_header_t fixed_header;
-	uint8_t connect_ack_flags;
-	uint8_t return_code;
-
-}mqtt_connack_t;
 
 
 /* @brief MQTT PUBLISH structure */
@@ -99,15 +87,10 @@ typedef struct mqtt_publish_qos
 	uint8_t  payload[100];
 
 }mqtt_publish_qos_t;
-*/
+ */
 
 
-typedef struct mqtt_disconnect
-{
-	mqtt_fixed_header_t control_packet;
-	uint8_t message_length;
 
-}mqtt_disconnect_t;
 
 
 
@@ -120,9 +103,8 @@ int main()
 	size_t message_length;
 
 	mqtt_client_t publisher;
-	mqtt_connack_t    *connack_msg;
+
 	mqtt_publish_t    *publish_msg;
-	mqtt_disconnect_t *disconnect_msg;
 
 	char message[2000]     = {0};
 	char read_buffer[1500] = {0};
@@ -132,6 +114,9 @@ int main()
 	char pass_word[]       = "1234";
 	char *pub_message;
 	uint8_t pub_message_length;
+	uint8_t mqtt_message_state;
+
+	uint8_t loop_state = 0;
 
 	int retval = 0;
 
@@ -154,103 +139,175 @@ int main()
 	}
 
 
-	/* Fill mqtt CONNECT message structure */
-	publisher.connect_msg = (void *)&message;
+	loop_state = 1;
 
-	publisher.connect_msg->connect_flags.clean_session = ENABLE;
-
-	retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
-	if(retval == 1)
-	{
-		message_length = mqtt_connect(&publisher, my_client_name, 60);
-
-		/* Send mqtt packet through socket API */
-		write(client_sfd, (char*)publisher.connect_msg, message_length);
-
-#if DEBUG
-	printf("%s :Sending CONNECT\n", my_client_name);
-#endif
-
-	}
+	mqtt_message_state = MQTT_CONNECT_MESSAGE;
 
 
-
-
-
-	/* Fill mqtt PUBLISH message strcuture */
-	memset(message, '\0', sizeof(message));
-
-    publish_msg = (void *)&message;
-	publish_msg->control_packet.message_type = 0x03;
-	publish_msg->topic_length = htons(40);
-
-	strcpy(publish_msg->topic_name, my_client_topic);
-
-	pub_message = "65 F";
-	strncpy(publish_msg->payload, pub_message, strlen(pub_message));
-	pub_message_length = (uint8_t)strlen(pub_message);
-
-	publish_msg->message_length = (uint8_t)(pub_message_length + TOPIC_LENGTH);
-
-#if DEBUG_ALL
-	printf("topic:%s, len:%ld\n", publish_msg->topic_name, strlen(publish_msg->topic_name));
-	printf("message:%s, len:%ld\n", publish_msg->payload, strlen(publish_msg->payload));
-	printf("Msg Len %d\n",publish_msg->message_length);
-#endif
-
-	/* @brief check CONNACK message */
-	connack_msg = (void *)read_buffer;
-
-	/* TODO implement FSM */
-	while( (read( client_sfd , read_buffer, 1500)) > 0)
+	/*@ MQTT Finite state machine */
+	while(loop_state)
 	{
 
-#if DEBUG || DEBUG_ALL
-		if(connack_msg->fixed_header.message_type == 2)
+		switch(mqtt_message_state)
 		{
+
+		case mqtt_idle_state:
+
+			loop_state = RUN;
+
+			break;
+
+
+		case mqtt_read_state:
+
+			/* @brief Read Message type from the socket read buffer */
+			read( client_sfd , read_buffer, 1500);
+
+			publisher.message_type = (void*)read_buffer;
+
+			/* Update State */
+			if(publisher.message_type->message_type == MQTT_CONNACK_MESSAGE)
+			{
+				mqtt_message_state = publisher.message_type->message_type;
+			}
+
+			break;
+
+
+		case mqtt_connect_state:
+
+			/* Fill mqtt CONNECT message structure */
+			publisher.connect_msg = (void *)&message;
+			publisher.connect_msg->connect_flags.clean_session = ENABLE;
+
+			/* Setup User name password (optional) */
+			retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
+			if(retval == 0)
+			{
+				printf("Bad value of user name or password\n");
+
+				mqtt_message_state = EXIT_STATE;
+
+				break;
+			}
+
+			/* Setup mqtt CONNECT Message  */
+			message_length = mqtt_connect(&publisher, my_client_name, 60);
+
+			/* Send mqtt CONNECT  (through socket API) */
+			write(client_sfd, (char*)publisher.connect_msg, message_length);
+
+			/* Print debug message */
+			printf("%s :Sending CONNECT\n", my_client_name);
+
+
+			mqtt_message_state = READ_STATE;
+
+			break;
+
+
+		case mqtt_connack_state:
+
+			/* @brief print debug message */
 			printf("%s :Received CONNACK\n", my_client_name);
-		}
+
+			/* Check return code of CONNACK message */
+			publisher.connack_msg = (void *)read_buffer;
+
+			if(publisher.connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
+			{
+
+				/* @brief print debug message */
+				printf("%s :Connection Accepted\n", my_client_name);
+
+				/* Update State */
+				mqtt_message_state = MQTT_PUBLISH_MESSAGE;
+
+			}
+			else if(publisher.connack_msg->return_code == MQTT_CONNECTION_REFUSED)
+			{
+				/* @brief print debug message */
+				printf("%s :Connection Refused\n", my_client_name);
+
+				/* TODO Update State for connack connection refused */
+
+			}
+			break;
+
+
+		case mqtt_publish_state:
+
+			/* Fill mqtt PUBLISH message strcuture */
+			memset(message, '\0', sizeof(message));
+
+			publish_msg = (void *)message;
+			publish_msg->control_packet.message_type = 0x03;
+			publish_msg->topic_length = htons(TOPIC_LENGTH);
+
+			memcpy(publish_msg->topic_name, my_client_topic, 19);
+
+			pub_message = "98";
+			strncpy(publish_msg->payload, pub_message, strlen(pub_message));
+			pub_message_length = (uint8_t)strlen(pub_message);
+
+			publish_msg->message_length = pub_message_length + TOPIC_LENGTH + sizeof(publish_msg->topic_length);
+
+#if 0
+			printf("topic:%s, len:%ld\n", publish_msg->topic_name, strlen(publish_msg->topic_name));
+			printf("message:%s, len:%ld\n", publish_msg->payload, strlen(publish_msg->payload));
+			printf("Msg Len %d\n",publish_msg->message_length);
 #endif
 
-		if(connack_msg->return_code == 0)
-		{
-
-#if DEBUG || DEBUG_ALL
-			printf("%s :Connection Accepted\n", my_client_name);
-#endif
-			/* @brief send publish message */
+			/* @brief send publish message (Socket API) */
 			write(client_sfd, message, (size_t)(publish_msg->message_length + FIXED_HEADER_LENGTH));
 
-#if DEBUG || DEBUG_ALL
+			/* @brief print debug message */
 			printf("%s :Sending PUBLISH(\"%s\",...(%d bytes))\n", my_client_name, publish_msg->topic_name, pub_message_length);
-#endif
+
+			/* Update State */
+			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+
+			break;
+
+
+		case mqtt_disconnect_state:
 
 			/* @brief Fill DISCONNECT structure */
 			memset(message,'\0',sizeof(message));
 
-            disconnect_msg = (void*)message;
-			disconnect_msg->control_packet.message_type = 14;
-			disconnect_msg->message_length = 0;
+			publisher.disconnect_msg = (void*)message;
 
-			write(client_sfd, message, (size_t)(disconnect_msg->message_length + FIXED_HEADER_LENGTH));
+			message_length = mqtt_disconnect(&publisher);
 
-#if DEBUG || DEBUG_ALL
+			/* Send Disconnect Message */
+			write(client_sfd, message, message_length);
+
+			/* @brief print debug message */
 			printf("%s :Sending DISCONNECT\n",my_client_name);
-#endif
+
+			/* Update State */
+			mqtt_message_state = EXIT_STATE;
 
 			break;
-		}
-		else if(connack_msg->return_code == 2)
-		{
 
-#if DEBUG || DEBUG_ALL
-			printf("%s :Connection Refused\n", my_client_name);
-#endif
+
+		case mqtt_exit_state:
+
+			/* Close socket */
+			close(client_sfd);
+
+			/* Suspend while loop */
+			loop_state = SUSPEND;
+
 			break;
+
+
+		default:
+			break;
+
 		}
+
 	}
-
-	close(client_sfd);
 
 	return 0;
 }
