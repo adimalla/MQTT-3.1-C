@@ -36,18 +36,19 @@
 /*                                                                            */
 /******************************************************************************/
 
+
 /* @brief Generic Defines */
 #define ENABLE  1
 #define DISABLE 0
 #define GCC     1
 
-/* @brief Defines for Connect Message */
-#define MQTT_CONNECT_MESSAGE  1
+
+/* @brief MQTT defines */
+
 #define FIXED_HEADER_LENGTH   2
 
 #define PROTOCOL_NAME_LENGTH  6
 #define PROTOCOL_NAME         "MQIsdp"
-
 #define PROTOCOL_VERSION      3
 
 #define CLIENT_ID_LENGTH      23
