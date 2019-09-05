@@ -52,6 +52,7 @@
 #define RUN        17
 #define SUSPEND    18
 
+
 /* @brief Defines for CONNECT Message */
 #define MQTT_CONNECT_MESSAGE  1
 
@@ -66,9 +67,10 @@
 #define MQTT_PUBLISH_MESSAGE  3
 
 
-
 /* @brief Defines for Disconnect */
 #define MQTT_DISCONNECT_MESSAGE 14
+
+
 
 
 /******************************************************************************/
@@ -91,6 +93,7 @@ typedef struct mqtt_header
 }mqtt_header_t;
 
 
+
 /* @brief MQTT CONNECT structures */
 
 /* Connect Flags bit fields */
@@ -105,6 +108,8 @@ typedef struct mqtt_connect_flags
 	uint8_t user_name_flag  : 1;  /*!< Enable user name option                          */
 
 }mqtt_connect_flags_t;
+
+
 
 /* TODO test username password with broker*/
 
@@ -128,7 +133,6 @@ typedef struct mqtt_connect
 
 
 
-
 /* @brief MQTT CONNACK structure */
 typedef struct mqtt_connack
 {
@@ -140,16 +144,24 @@ typedef struct mqtt_connack
 
 
 
+/* @brief MQTT disconnect structure */
+typedef struct mqtt_disconnect
+{
+	mqtt_header_t fixed_header;
+
+}mqtt_disconnect_t;
+
+
 
 
 /* @brief MQTT client handle structure */
 typedef struct mqtt_client_handle
 {
-	mqtt_header_t  *message_type;
-	mqtt_connect_t *connect_msg;
-	mqtt_connack_t *connack_msg;
+	mqtt_header_t     *message_type;
+	mqtt_connect_t    *connect_msg;
+	mqtt_connack_t    *connack_msg;
 	//mqtt_publish_t *publish_msg;
-
+	mqtt_disconnect_t *disconnect_msg;
 
 }mqtt_client_t;
 
@@ -158,14 +170,15 @@ typedef struct mqtt_client_handle
 /* @brief MQTT message types for State Machine */
 enum mqtt_message_states
 {
-	mqtt_read_state       = 0,
+	mqtt_idle_state       = IDLE_STATE,
+	mqtt_read_state       = READ_STATE,
+
 	mqtt_connect_state    = MQTT_CONNECT_MESSAGE,
 	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,
 	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,
 	mqtt_puback_state     = 4,
 	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,
 
-	mqtt_idle_state       = IDLE_STATE,
 	mqtt_exit_state       = EXIT_STATE,
 };
 
@@ -176,7 +189,6 @@ enum mqtt_message_states
 /*                       API Function Prototypes                              */
 /*                                                                            */
 /******************************************************************************/
-
 
 
 
@@ -192,7 +204,7 @@ uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char
 
 
 /*
- * @brief  Configures mqtt connect message structure.
+ * @brief  Configures mqtt CONNECT message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
  * @param  client_name     : Name of the mqtt client given by user.
  * @param  keep_alive_time : Keep Alive time for the client.
@@ -200,6 +212,14 @@ uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char
  */
 size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time);
 
+
+
+/*
+ * @brief  Configures mqtt DISCONNECT message structure.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t          : Length of disconnect message.
+ */
+size_t mqtt_disconnect(mqtt_client_t *client);
 
 
 
