@@ -35,7 +35,41 @@
 #include <stdint.h>
 #include "mqtt_configs.h"
 
+
+/******************************************************************************/
+/*                                                                            */
+/*                       Macros and Defines                                   */
+/*                                                                            */
+/******************************************************************************/
+
+/* Avoid Structure padding */
 #pragma pack(1)
+
+/* State Machine defines */
+#define READ_STATE 0
+#define IDLE_STATE 15
+#define EXIT_STATE 16
+#define RUN        17
+#define SUSPEND    18
+
+/* @brief Defines for CONNECT Message */
+#define MQTT_CONNECT_MESSAGE  1
+
+
+/* @brief Defines for CONNACK Message */
+#define MQTT_CONNACK_MESSAGE      2
+#define MQTT_CONNECTION_ACCEPTED  0
+#define MQTT_CONNECTION_REFUSED   2
+
+
+/* @brief Defines for PUBLISH Message */
+#define MQTT_PUBLISH_MESSAGE  3
+
+
+
+/* @brief Defines for Disconnect */
+#define MQTT_DISCONNECT_MESSAGE 14
+
 
 /******************************************************************************/
 /*                                                                            */
@@ -72,7 +106,7 @@ typedef struct mqtt_connect_flags
 
 }mqtt_connect_flags_t;
 
-/* TODO test username password */
+/* TODO test username password with broker*/
 
 /* Main MQTT Connect Structure */
 typedef struct mqtt_connect
@@ -94,16 +128,46 @@ typedef struct mqtt_connect
 
 
 
+
+/* @brief MQTT CONNACK structure */
+typedef struct mqtt_connack
+{
+	mqtt_header_t fixed_header;
+	uint8_t connect_ack_flags;
+	uint8_t return_code;
+
+}mqtt_connack_t;
+
+
+
+
+
 /* @brief MQTT client handle structure */
 typedef struct mqtt_client_handle
 {
+	mqtt_header_t  *message_type;
 	mqtt_connect_t *connect_msg;
-	//mqtt_connack_t *connack_msg;
+	mqtt_connack_t *connack_msg;
 	//mqtt_publish_t *publish_msg;
 
 
 }mqtt_client_t;
 
+
+
+/* @brief MQTT message types for State Machine */
+enum mqtt_message_states
+{
+	mqtt_read_state       = 0,
+	mqtt_connect_state    = MQTT_CONNECT_MESSAGE,
+	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,
+	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,
+	mqtt_puback_state     = 4,
+	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,
+
+	mqtt_idle_state       = IDLE_STATE,
+	mqtt_exit_state       = EXIT_STATE,
+};
 
 
 
