@@ -46,10 +46,9 @@
 
 
 
-#define TOPIC_LENGTH          40U
+#define TOPIC_LENGTH          40
 
-
-
+#define pragma pack(1)
 
 /* @brief Fixed Header */
 typedef struct mqtt_fixed_header
@@ -91,12 +90,7 @@ typedef struct mqtt_publish_qos
  */
 
 
-typedef struct mqtt_disconnect
-{
-	mqtt_fixed_header_t control_packet;
-	uint8_t message_length;
 
-}mqtt_disconnect_t;
 
 
 
@@ -111,7 +105,6 @@ int main()
 	mqtt_client_t publisher;
 
 	mqtt_publish_t    *publish_msg;
-	mqtt_disconnect_t *disconnect_msg;
 
 	char message[2000]     = {0};
 	char read_buffer[1500] = {0};
@@ -146,8 +139,6 @@ int main()
 	}
 
 
-
-
 	loop_state = 1;
 
 	mqtt_message_state = MQTT_CONNECT_MESSAGE;
@@ -165,6 +156,20 @@ int main()
 			loop_state = RUN;
 
 			break;
+
+
+		case mqtt_read_state:
+
+			/* @brief Read Message type from the socket read buffer */
+			read( client_sfd , read_buffer, 1500);
+
+			publisher.message_type = (void*)read_buffer;
+
+			/* Update State */
+			mqtt_message_state = publisher.message_type->message_type;
+
+			break;
+
 
 		case mqtt_connect_state:
 
@@ -191,17 +196,6 @@ int main()
 
 			break;
 
-		case mqtt_read_state:
-
-			/* @brief Read Message type from the socket read buffer */
-			read( client_sfd , read_buffer, 1500);
-
-			publisher.message_type = (void*)read_buffer;
-
-			/* Update State */
-			mqtt_message_state = publisher.message_type->message_type;
-
-			break;
 
 		case mqtt_connack_state:
 
@@ -231,24 +225,25 @@ int main()
 			}
 			break;
 
+
 		case mqtt_publish_state:
 
 			/* Fill mqtt PUBLISH message strcuture */
 			memset(message, '\0', sizeof(message));
 
-			publish_msg = (void *)&message;
+			publish_msg = (void *)message;
 			publish_msg->control_packet.message_type = 0x03;
-			publish_msg->topic_length = htons(40);
+			publish_msg->topic_length = htons(TOPIC_LENGTH);
 
-			strcpy(publish_msg->topic_name, my_client_topic);
+			memcpy(publish_msg->topic_name, my_client_topic, 19);
 
-			pub_message = "65 F";
+			pub_message = "98";
 			strncpy(publish_msg->payload, pub_message, strlen(pub_message));
 			pub_message_length = (uint8_t)strlen(pub_message);
 
-			publish_msg->message_length = (uint8_t)(pub_message_length + TOPIC_LENGTH);
+			publish_msg->message_length = pub_message_length + TOPIC_LENGTH + sizeof(publish_msg->topic_length);
 
-#if DEBUG_ALL
+#if 0
 			printf("topic:%s, len:%ld\n", publish_msg->topic_name, strlen(publish_msg->topic_name));
 			printf("message:%s, len:%ld\n", publish_msg->payload, strlen(publish_msg->payload));
 			printf("Msg Len %d\n",publish_msg->message_length);
@@ -271,11 +266,11 @@ int main()
 			/* @brief Fill DISCONNECT structure */
 			memset(message,'\0',sizeof(message));
 
-			disconnect_msg = (void*)message;
-			disconnect_msg->control_packet.message_type = 14;
-			disconnect_msg->message_length = 0;
+			publisher.disconnect_msg = (void*)message;
 
-			write(client_sfd, message, (size_t)(disconnect_msg->message_length + FIXED_HEADER_LENGTH));
+			message_length = mqtt_disconnect(&publisher);
+
+			write(client_sfd, message, message_length);
 
 			/* @brief print debug message */
 			printf("%s :Sending DISCONNECT\n",my_client_name);
@@ -284,6 +279,7 @@ int main()
 			mqtt_message_state = EXIT_STATE;
 
 			break;
+
 
 		case mqtt_exit_state:
 
