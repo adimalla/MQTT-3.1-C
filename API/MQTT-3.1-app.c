@@ -166,7 +166,10 @@ int main()
 			publisher.message_type = (void*)read_buffer;
 
 			/* Update State */
-			mqtt_message_state = publisher.message_type->message_type;
+			if(publisher.message_type->message_type == MQTT_CONNACK_MESSAGE)
+			{
+				mqtt_message_state = publisher.message_type->message_type;
+			}
 
 			break;
 
@@ -179,18 +182,24 @@ int main()
 
 			/* Setup User name password (optional) */
 			retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
-			if(retval == 1)
+			if(retval == 0)
 			{
-				/* Setup mqtt CONNECT Message  */
-				message_length = mqtt_connect(&publisher, my_client_name, 60);
+				printf("Bad value of user name or password\n");
 
-				/* Send mqtt CONNECT  (through socket API) */
-				write(client_sfd, (char*)publisher.connect_msg, message_length);
+				mqtt_message_state = EXIT_STATE;
 
-				/* Print debug message */
-				printf("%s :Sending CONNECT\n", my_client_name);
-
+				break;
 			}
+
+			/* Setup mqtt CONNECT Message  */
+			message_length = mqtt_connect(&publisher, my_client_name, 60);
+
+			/* Send mqtt CONNECT  (through socket API) */
+			write(client_sfd, (char*)publisher.connect_msg, message_length);
+
+			/* Print debug message */
+			printf("%s :Sending CONNECT\n", my_client_name);
+
 
 			mqtt_message_state = READ_STATE;
 
@@ -249,7 +258,7 @@ int main()
 			printf("Msg Len %d\n",publish_msg->message_length);
 #endif
 
-			/* @brief send publish message */
+			/* @brief send publish message (Socket API) */
 			write(client_sfd, message, (size_t)(publish_msg->message_length + FIXED_HEADER_LENGTH));
 
 			/* @brief print debug message */
@@ -270,6 +279,7 @@ int main()
 
 			message_length = mqtt_disconnect(&publisher);
 
+			/* Send Disconnect Message */
 			write(client_sfd, message, message_length);
 
 			/* @brief print debug message */
@@ -283,9 +293,14 @@ int main()
 
 		case mqtt_exit_state:
 
+			/* Close socket */
+			close(client_sfd);
+
+			/* Suspend while loop */
 			loop_state = SUSPEND;
 
 			break;
+
 
 		default:
 			break;
@@ -293,8 +308,6 @@ int main()
 		}
 
 	}
-
-	close(client_sfd);
 
 	return 0;
 }
