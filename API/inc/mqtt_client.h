@@ -98,9 +98,9 @@
 /* @brief MQTT Fixed Header, common to all control messages */
 typedef struct mqtt_header
 {
-    uint8_t retain_flag     : 1;  /*!< Message Retain Flag, (LSB)                                              */
-    uint8_t qos_level       : 2;  /*!< Quality of service Level, (LSB)                                         */
-    uint8_t dup_flag        : 1;  /*!< Duplicate Flag, (LSB)                                                   */
+	uint8_t retain_flag     : 1;  /*!< Message Retain Flag, (LSB)                                              */
+	uint8_t qos_level       : 2;  /*!< Quality of service Level, (LSB)                                         */
+	uint8_t dup_flag        : 1;  /*!< Duplicate Flag, (LSB)                                                   */
 	uint8_t message_type    : 4;  /*!< MQTT Control Packet / Message Type, (MSB)                               */
 	uint8_t message_length;       /*!< Length of MQTT Message (Remaining Length, excludes fixed header length) */
 
