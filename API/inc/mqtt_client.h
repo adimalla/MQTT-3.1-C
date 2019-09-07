@@ -46,29 +46,43 @@
 #pragma pack(1)
 
 /* State Machine defines */
-#define READ_STATE 0
-#define IDLE_STATE 15
-#define EXIT_STATE 16
-#define RUN        17
-#define SUSPEND    18
+#define READ_STATE  16  /*!< */
+#define IDLE_STATE  17  /*!< */
+#define EXIT_STATE  18  /*!< */
 
+#define FSM_RUN     1   /*!< */
+#define FSM_SUSPEND 0   /*!< */
+
+
+/* MQTT Header Options */
+#define MQTT_MESSAGE_RETAIN    1  /*!< */
+#define MQTT_MESSAGE_NO_RETAIN 0  /*!< */
+#define QOS_FIRE_FORGET        0  /*!< */
+#define QOS_ATLEAST_ONCE       1  /*!< */
+#define QOS_EXACTLY_ONCE       2  /*!< */
+#define QOS_RESERVED           3  /*!< */
 
 /* @brief Defines for CONNECT Message */
-#define MQTT_CONNECT_MESSAGE  1
+#define MQTT_CONNECT_MESSAGE  1  /*!< */
 
 
 /* @brief Defines for CONNACK Message */
-#define MQTT_CONNACK_MESSAGE      2
-#define MQTT_CONNECTION_ACCEPTED  0
-#define MQTT_CONNECTION_REFUSED   2
+#define MQTT_CONNACK_MESSAGE      2  /*!< */
+#define MQTT_CONNECTION_ACCEPTED  0  /*!< */
+#define MQTT_CONNECTION_REFUSED   2  /*!< */
 
 
 /* @brief Defines for PUBLISH Message */
-#define MQTT_PUBLISH_MESSAGE  3
+#define MQTT_PUBLISH_MESSAGE    3               /*!< */
+#define MQTT_TOPIC_LENGTH       TOPIC_LENGTH    /*!< */
+#define PUBLISH_PAYLOAD_LENGTH  MESSAGE_LENGTH  /*!< */
+#define MQTT_MESSAGE_ID_OFFSET  2               /*!< */
 
+/* Defines for PUBACK Message */
+#define MQTT_PUBACK_MESSAGE    4  /*!< */
 
 /* @brief Defines for Disconnect */
-#define MQTT_DISCONNECT_MESSAGE 14
+#define MQTT_DISCONNECT_MESSAGE 14  /*!< */
 
 
 
@@ -136,9 +150,9 @@ typedef struct mqtt_connect
 /* @brief MQTT CONNACK structure */
 typedef struct mqtt_connack
 {
-	mqtt_header_t fixed_header;
-	uint8_t connect_ack_flags;
-	uint8_t return_code;
+	mqtt_header_t fixed_header;       /*!< */
+	uint8_t       connect_ack_flags;  /*!< */
+	uint8_t       return_code;        /*!< */
 
 }mqtt_connack_t;
 
@@ -147,21 +161,32 @@ typedef struct mqtt_connack
 /* @brief MQTT disconnect structure */
 typedef struct mqtt_disconnect
 {
-	mqtt_header_t fixed_header;
+	mqtt_header_t fixed_header;  /*!< */
 
 }mqtt_disconnect_t;
 
+
+
+/* @brief MQTT PUBLISH structure */
+typedef struct mqtt_publish
+{
+	mqtt_header_t fixed_header;    /*!< */
+	uint16_t      topic_length;    /*!< */
+	char          topic_name[40];  /*!< */
+	char          payload[100];    /*!< */
+
+}mqtt_publish_t;
 
 
 
 /* @brief MQTT client handle structure */
 typedef struct mqtt_client_handle
 {
-	mqtt_header_t     *message_type;
-	mqtt_connect_t    *connect_msg;
-	mqtt_connack_t    *connack_msg;
-	//mqtt_publish_t *publish_msg;
-	mqtt_disconnect_t *disconnect_msg;
+	mqtt_header_t      *message;          /*!< */
+	mqtt_connect_t     *connect_msg;      /*!< */
+	mqtt_connack_t     *connack_msg;      /*!< */
+	mqtt_publish_t     *publish_msg;      /*!< */
+	mqtt_disconnect_t  *disconnect_msg;   /*!< */
 
 }mqtt_client_t;
 
@@ -170,17 +195,18 @@ typedef struct mqtt_client_handle
 /* @brief MQTT message types for State Machine */
 enum mqtt_message_states
 {
-	mqtt_idle_state       = IDLE_STATE,
-	mqtt_read_state       = READ_STATE,
+	mqtt_idle_state       = IDLE_STATE,               /*!< */
+	mqtt_read_state       = READ_STATE,               /*!< */
 
-	mqtt_connect_state    = MQTT_CONNECT_MESSAGE,
-	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,
-	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,
-	mqtt_puback_state     = 4,
-	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,
+	mqtt_connect_state    = MQTT_CONNECT_MESSAGE,     /*!< */
+	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,     /*!< */
+	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,     /*!< */
+	mqtt_puback_state     = MQTT_PUBACK_MESSAGE,      /*!< */
+	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< */
 
-	mqtt_exit_state       = EXIT_STATE,
+	mqtt_exit_state       = EXIT_STATE,               /*!< */
 };
+
 
 
 
@@ -197,9 +223,9 @@ enum mqtt_message_states
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
  * @param  user_name : mqtt client user name
  * @param  password  : mqtt client password
- * @retval uint8_t   : 1 = Success, 0 = Failure
+ * @retval int8_t    : 1 = Success, -1 = Error
  */
-uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password);
+int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password);
 
 
 
@@ -215,9 +241,31 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 /*
+ * @brief  Configures mqtt PUBLISH message options.
+ * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
+ * @param  message_retain : Enable retain for message retention at broker
+ * @param  message_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @retval int8_t         : 1 = Success, -1 = Error
+ */
+int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8_t message_qos);
+
+
+
+/*
+ * @brief  Configures mqtt PUBLISH message structure.
+ * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *publish_topic   : publish topic name
+ * @param  *publish_message : message to be published
+ * @retval size_t           : length of PUBLISH control packet.
+ */
+size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message);
+
+
+
+/*
  * @brief  Configures mqtt DISCONNECT message structure.
- * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
- * @retval size_t          : Length of disconnect message.
+ * @param  *client : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t  : Length of disconnect message.
  */
 size_t mqtt_disconnect(mqtt_client_t *client);
 
