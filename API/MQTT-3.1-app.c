@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 
 #include <mqtt_client.h>
 
@@ -45,66 +46,15 @@
 #define PORT 1883
 
 
-
-#define TOPIC_LENGTH          40
-
-#define pragma pack(1)
-
-/* @brief Fixed Header */
-typedef struct mqtt_fixed_header
-{
-
-	uint8_t retain_flag  : 1;
-	uint8_t qos_level    : 2;
-	uint8_t dup_flag     : 1;
-	uint8_t message_type : 4; /*!< MSB */
-
-}mqtt_fixed_header_t;
-
-
-
-/* @brief MQTT PUBLISH structure */
-typedef struct mqtt_publish
-{
-	mqtt_fixed_header_t control_packet;
-	uint8_t  message_length;
-	uint16_t topic_length;
-	char  topic_name[40];
-	char  payload[100];
-
-}mqtt_publish_t;
-
-
-/* TODO Test QOS
-// with qos
-typedef struct mqtt_publish_qos
-{
-	mqtt_fixed_header_t control_packet;
-	uint8_t  message_length;
-	uint16_t topic_length;
-	uint8_t  topic_name[40];
-	uint16_t message_id;
-	uint8_t  payload[100];
-
-}mqtt_publish_qos_t;
- */
-
-
-
-
-
-
-
 int main()
 {
 	int client_sfd;
 	struct sockaddr_in server_addr;
 
 	size_t message_length;
+	int8_t message_status;
 
 	mqtt_client_t publisher;
-
-	mqtt_publish_t    *publish_msg;
 
 	char message[2000]     = {0};
 	char read_buffer[1500] = {0};
@@ -113,7 +63,7 @@ int main()
 	char user_name[]       = "device1.sensor";
 	char pass_word[]       = "1234";
 	char *pub_message;
-	uint8_t pub_message_length;
+
 	uint8_t mqtt_message_state;
 
 	uint8_t loop_state = 0;
@@ -139,10 +89,9 @@ int main()
 	}
 
 
-	loop_state = 1;
+	loop_state = FSM_RUN;
 
-	mqtt_message_state = MQTT_CONNECT_MESSAGE;
-
+	mqtt_message_state = IDLE_STATE;
 
 	/*@ MQTT Finite state machine */
 	while(loop_state)
@@ -153,7 +102,11 @@ int main()
 
 		case mqtt_idle_state:
 
-			loop_state = RUN;
+			printf("FSM Idle Start \n");
+
+			loop_state = FSM_RUN;
+
+			mqtt_message_state = MQTT_CONNECT_MESSAGE;
 
 			break;
 
@@ -163,13 +116,24 @@ int main()
 			/* @brief Read Message type from the socket read buffer */
 			read( client_sfd , read_buffer, 1500);
 
-			publisher.message_type = (void*)read_buffer;
+			publisher.message = (void*)read_buffer;
 
 			/* Update State */
-			if(publisher.message_type->message_type == MQTT_CONNACK_MESSAGE)
+			if(publisher.message->message_type == MQTT_CONNACK_MESSAGE)
 			{
-				mqtt_message_state = publisher.message_type->message_type;
+				mqtt_message_state = publisher.message->message_type;
 			}
+			else if(publisher.message->message_type == MQTT_PUBACK_MESSAGE)
+			{
+				mqtt_message_state = publisher.message->message_type;
+			}
+			else
+			{
+				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+			}
+
+			/* Clear read buffer after reading */
+			memset(read_buffer, '\0', sizeof(message));
 
 			break;
 
@@ -182,7 +146,7 @@ int main()
 
 			/* Setup User name password (optional) */
 			retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
-			if(retval == 0)
+			if(retval == -1)
 			{
 				printf("Bad value of user name or password\n");
 
@@ -200,7 +164,7 @@ int main()
 			/* Print debug message */
 			printf("%s :Sending CONNECT\n", my_client_name);
 
-
+			/* Update state */
 			mqtt_message_state = READ_STATE;
 
 			break;
@@ -217,17 +181,12 @@ int main()
 			if(publisher.connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
 			{
 
-				/* @brief print debug message */
-				printf("%s :Connection Accepted\n", my_client_name);
-
 				/* Update State */
 				mqtt_message_state = MQTT_PUBLISH_MESSAGE;
 
 			}
 			else if(publisher.connack_msg->return_code == MQTT_CONNECTION_REFUSED)
 			{
-				/* @brief print debug message */
-				printf("%s :Connection Refused\n", my_client_name);
 
 				/* TODO Update State for connack connection refused */
 
@@ -237,34 +196,42 @@ int main()
 
 		case mqtt_publish_state:
 
+			pub_message = "Test Message from Client!!";
+
 			/* Fill mqtt PUBLISH message strcuture */
 			memset(message, '\0', sizeof(message));
 
-			publish_msg = (void *)message;
-			publish_msg->control_packet.message_type = 0x03;
-			publish_msg->topic_length = htons(TOPIC_LENGTH);
+			publisher.publish_msg = (void *)message;
 
-			memcpy(publish_msg->topic_name, my_client_topic, 19);
+			/*Configure publish options */
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_ATLEAST_ONCE);
 
-			pub_message = "98";
-			strncpy(publish_msg->payload, pub_message, strlen(pub_message));
-			pub_message_length = (uint8_t)strlen(pub_message);
-
-			publish_msg->message_length = pub_message_length + TOPIC_LENGTH + sizeof(publish_msg->topic_length);
-
-#if 0
-			printf("topic:%s, len:%ld\n", publish_msg->topic_name, strlen(publish_msg->topic_name));
-			printf("message:%s, len:%ld\n", publish_msg->payload, strlen(publish_msg->payload));
-			printf("Msg Len %d\n",publish_msg->message_length);
-#endif
+			/* Configure publish message */
+			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
 
 			/* @brief send publish message (Socket API) */
-			write(client_sfd, message, (size_t)(publish_msg->message_length + FIXED_HEADER_LENGTH));
+			write(client_sfd, (char*)publisher.publish_msg, message_length);
 
 			/* @brief print debug message */
-			printf("%s :Sending PUBLISH(\"%s\",...(%d bytes))\n", my_client_name, publish_msg->topic_name, pub_message_length);
+			printf("%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, publisher.publish_msg->topic_name, strlen(pub_message));
 
 			/* Update State */
+			if(message_status == QOS_ATLEAST_ONCE || message_status == QOS_EXACTLY_ONCE)
+			{
+				mqtt_message_state = READ_STATE;
+			}
+			else
+			{
+				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+			}
+
+			break;
+
+
+		case mqtt_puback_state:
+
+			printf("%s :Received PUBACK\n",my_client_name);
+
 			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
 
 			break;
@@ -293,14 +260,15 @@ int main()
 
 		case mqtt_exit_state:
 
+			printf("FSM Exit state \n");
+
 			/* Close socket */
 			close(client_sfd);
 
 			/* Suspend while loop */
-			loop_state = SUSPEND;
+			loop_state = FSM_SUSPEND;
 
 			break;
-
 
 		default:
 			break;
@@ -308,6 +276,8 @@ int main()
 		}
 
 	}
+
+	printf("Exit from FSM \n");
 
 	return 0;
 }
