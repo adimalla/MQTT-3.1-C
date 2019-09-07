@@ -55,6 +55,7 @@
 #define USER_NAME_LENGTH      23
 #define PASSWORD_LENGTH       23
 
-
+#define TOPIC_LENGTH          40
+#define MESSAGE_LENGTH        100
 
 #endif /* INC_MQTT_CONFIGS_H_ */
