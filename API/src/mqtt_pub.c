@@ -39,6 +39,21 @@
 
 /******************************************************************************/
 /*                                                                            */
+/*                  Data Structures and Defines                               */
+/*                                                                            */
+/******************************************************************************/
+
+
+enum function_return_codes
+{
+	func_opts_error      = -1, /*!< */
+	func_opts_success    = 1,  /*!< */
+	func_param_len_error = 0,  /*!< */
+};
+
+
+/******************************************************************************/
+/*                                                                            */
 /*                              API Functions                                 */
 /*                                                                            */
 /******************************************************************************/
@@ -59,20 +74,20 @@ static uint16_t mqtt_htons(uint16_t value)
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
  * @param  user_name : mqtt client user name
  * @param  password  : mqtt client password
- * @retval uint8_t   : 1 = Success, 0 = Failure
+ * @retval int8_t    : 1 = Success, -1 = Error
  */
-uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password)
+int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password)
 {
 	/* check if user name is not null */
 	if( strlen(user_name) == 0 )
 	{
-		return 0;
+		return func_opts_error;
 	}
 
 	/* check if user name and passsword doesn't exceed defined length, if yes return 0 */
 	if( strlen(user_name) > USER_NAME_LENGTH || strlen(password) > PASSWORD_LENGTH)
 	{
-		return 0;
+		return func_opts_error;
 	}
 	else
 	{
@@ -83,10 +98,10 @@ uint8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char
 		strcpy(client->connect_msg->password, password);
 
 		client->connect_msg->user_name_length = mqtt_htons(USER_NAME_LENGTH);
-		client->connect_msg->password_length = mqtt_htons(PASSWORD_LENGTH);
+		client->connect_msg->password_length  = mqtt_htons(PASSWORD_LENGTH);
 	}
 
-	return 1;
+	return func_opts_success;
 }
 
 
@@ -103,7 +118,6 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	size_t message_length;
 
 	client->connect_msg->fixed_header.message_type  = MQTT_CONNECT_MESSAGE;
-
 	client->connect_msg->protocol_name_length 	    = mqtt_htons(PROTOCOL_NAME_LENGTH);
 
 	strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
@@ -121,6 +135,102 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 	return message_length;
 }
+
+
+
+/*
+ * @brief  Configures mqtt PUBLISH message options.
+ * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
+ * @param  message_retain : Enable retain for message retention at broker
+ * @param  message_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @retval int8_t         : 1 = Success, -1 = Error
+ */
+int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8_t message_qos)
+{
+	if(message_retain)
+	{
+		client->publish_msg->fixed_header.retain_flag = ENABLE;
+
+	}
+
+	/* Check if Quality of service value (qos) is less than reserved value (val:3) */
+	if(message_qos < QOS_RESERVED)
+	{
+		client->publish_msg->fixed_header.qos_level = message_qos;
+	}
+	else
+	{
+		return func_opts_error;
+	}
+
+	return message_qos;
+}
+
+
+
+/*
+ * @brief  Configures mqtt PUBLISH message structure.
+ * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *publish_topic   : publish topic name
+ * @param  *publish_message : message to be published
+ * @retval size_t           : length of PUBLISH control packet, retval = 0, if fail.
+ */
+size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message)
+{
+
+	uint8_t message_length         = 0;
+	uint8_t publish_topic_length   = 0;
+	uint8_t publish_message_length = 0;
+
+	publish_topic_length   = strlen(publish_topic);
+
+	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
+	if(client->publish_msg->fixed_header.qos_level > 0)
+	{
+		publish_message_length = strlen(publish_message) + 2;
+	}
+	else
+	{
+		publish_message_length = strlen(publish_message);
+	}
+
+	/* Check for overflow condition, if topic and message length is not greater than specified length */
+	if(publish_topic_length > MQTT_TOPIC_LENGTH || publish_message_length > PUBLISH_PAYLOAD_LENGTH)
+	{
+		return func_param_len_error;
+	}
+
+
+	client->publish_msg->fixed_header.message_type = MQTT_PUBLISH_MESSAGE;
+	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
+
+
+	/* Copy topic to publish topic member */
+	strncpy(client->publish_msg->topic_name, publish_topic, publish_topic_length);
+
+	/* Copy message to publish pay load, insert message ID if quality of service > 0 */
+	if(client->publish_msg->fixed_header.qos_level > 0)
+	{
+
+		client->publish_msg->payload[0] = 0;
+		client->publish_msg->payload[1] = 1;
+
+		strcpy(client->publish_msg->payload + 2, publish_message);
+	}
+	else
+	{
+		strncpy(client->publish_msg->payload, publish_message, publish_message_length);
+	}
+
+	/* TODO can be improved*/
+	client->publish_msg->fixed_header.message_length = publish_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
+
+	message_length = client->publish_msg->fixed_header.message_length + FIXED_HEADER_LENGTH;
+
+	return message_length;
+}
+
+
 
 
 /*
