@@ -180,10 +180,8 @@ int main()
 
 			if(publisher.connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
 			{
-
 				/* Update State */
 				mqtt_message_state = MQTT_PUBLISH_MESSAGE;
-
 			}
 			else if(publisher.connack_msg->return_code == MQTT_CONNECTION_REFUSED)
 			{

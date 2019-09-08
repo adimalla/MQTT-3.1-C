@@ -60,6 +60,11 @@ enum function_return_codes
 
 
 
+/*
+ * @brief  static function to convert to network byte order for mqtt packets
+ * @param  value    : value in host byte order format
+ * @retval uint16_t : value network byte order format
+ */
 static uint16_t mqtt_htons(uint16_t value)
 {
 	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
@@ -138,6 +143,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 
+
 /*
  * @brief  Configures mqtt PUBLISH message options.
  * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
@@ -165,6 +171,7 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
 
 	return message_qos;
 }
+
 
 
 
