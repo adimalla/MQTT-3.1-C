@@ -52,6 +52,7 @@ enum function_return_codes
 };
 
 
+
 /******************************************************************************/
 /*                                                                            */
 /*                              API Functions                                 */
@@ -89,7 +90,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 		return func_opts_error;
 	}
 
-	/* check if user name and passsword doesn't exceed defined length, if yes return 0 */
+	/* check if user name and password doesn't exceed defined length, if yes return 0 */
 	if( strlen(user_name) > USER_NAME_LENGTH || strlen(password) > PASSWORD_LENGTH)
 	{
 		return func_opts_error;
@@ -187,30 +188,30 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 	uint8_t message_length         = 0;
 	uint8_t publish_topic_length   = 0;
-	uint8_t publish_message_length = 0;
+	uint8_t payload_message_length = 0;
 
 	publish_topic_length   = strlen(publish_topic);
 
 	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
 	if(client->publish_msg->fixed_header.qos_level > 0)
 	{
-		publish_message_length = strlen(publish_message) + 2;
+		payload_message_length = strlen(publish_message) + MQTT_MESSAGE_ID_OFFSET;
 	}
 	else
 	{
-		publish_message_length = strlen(publish_message);
+		payload_message_length = strlen(publish_message);
 	}
 
 	/* Check for overflow condition, if topic and message length is not greater than specified length */
-	if(publish_topic_length > MQTT_TOPIC_LENGTH || publish_message_length > PUBLISH_PAYLOAD_LENGTH)
+	if(publish_topic_length > MQTT_TOPIC_LENGTH || payload_message_length > PUBLISH_PAYLOAD_LENGTH)
 	{
 		return func_param_len_error;
 	}
 
-
+	/* Fill main publish structure */
 	client->publish_msg->fixed_header.message_type = MQTT_PUBLISH_MESSAGE;
-	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
 
+	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
 
 	/* Copy topic to publish topic member */
 	strncpy(client->publish_msg->topic_name, publish_topic, publish_topic_length);
@@ -222,20 +223,22 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 		client->publish_msg->payload[0] = 0;
 		client->publish_msg->payload[1] = 1;
 
-		strcpy(client->publish_msg->payload + 2, publish_message);
+		strcpy(client->publish_msg->payload + MQTT_MESSAGE_ID_OFFSET, publish_message);
 	}
 	else
 	{
-		strncpy(client->publish_msg->payload, publish_message, publish_message_length);
+		strncpy(client->publish_msg->payload, publish_message, payload_message_length);
 	}
 
 	/* TODO can be improved*/
-	client->publish_msg->fixed_header.message_length = publish_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
+	client->publish_msg->fixed_header.message_length = payload_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
 
 	message_length = client->publish_msg->fixed_header.message_length + FIXED_HEADER_LENGTH;
 
 	return message_length;
 }
+
+
 
 
 
