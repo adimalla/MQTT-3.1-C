@@ -202,10 +202,10 @@ int main()
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_ATLEAST_ONCE);
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_RETAIN, QOS_ATLEAST_ONCE);
 
 			/* Configure publish message */
-			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
+			message_length = mqtt_publish(&publisher, my_client_topic, PUBLISH_NULL_MESSAGE);
 
 			/* @brief send publish message (Socket API) */
 			write(client_sfd, (char*)publisher.publish_msg, message_length);

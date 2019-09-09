@@ -43,7 +43,7 @@
 /*                                                                            */
 /******************************************************************************/
 
-
+/* return codes for mqtt api functions */
 enum function_return_codes
 {
 	func_opts_error      = -1, /*!< */
