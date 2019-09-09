@@ -10,7 +10,7 @@ MQTT version 3.1 client API libary for Mosquitto Broker in C.
 ![License:MIT](https://img.shields.io/github/last-commit/adimalla/MQTT-3.1-C?label=Last%20Commit&style=plastic)
 <BR>
 <BR>
-![Last Commit:date](https://img.shields.io/github/last-commit/adimalla/MQTT-3.1-C?style=plastic)
+![Last Commit:date](https://img.shields.io/github/last-commit/adimalla/MQTT-3.1-C?label=Last%20Commit&style=plastic)
 
 
 ## Description
