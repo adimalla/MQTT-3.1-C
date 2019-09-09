@@ -43,13 +43,14 @@
 /*                                                                            */
 /******************************************************************************/
 
-
+/* return codes for mqtt api functions */
 enum function_return_codes
 {
 	func_opts_error      = -1, /*!< */
 	func_opts_success    = 1,  /*!< */
 	func_param_len_error = 0,  /*!< */
 };
+
 
 
 /******************************************************************************/
@@ -60,6 +61,11 @@ enum function_return_codes
 
 
 
+/*
+ * @brief  static function to convert to network byte order for mqtt packets
+ * @param  value    : value in host byte order format
+ * @retval uint16_t : value network byte order format
+ */
 static uint16_t mqtt_htons(uint16_t value)
 {
 	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
@@ -84,7 +90,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 		return func_opts_error;
 	}
 
-	/* check if user name and passsword doesn't exceed defined length, if yes return 0 */
+	/* check if user name and password doesn't exceed defined length, if yes return 0 */
 	if( strlen(user_name) > USER_NAME_LENGTH || strlen(password) > PASSWORD_LENGTH)
 	{
 		return func_opts_error;
@@ -138,6 +144,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 
+
 /*
  * @brief  Configures mqtt PUBLISH message options.
  * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
@@ -168,6 +175,7 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
 
 
 
+
 /*
  * @brief  Configures mqtt PUBLISH message structure.
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
@@ -180,30 +188,30 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 	uint8_t message_length         = 0;
 	uint8_t publish_topic_length   = 0;
-	uint8_t publish_message_length = 0;
+	uint8_t payload_message_length = 0;
 
 	publish_topic_length   = strlen(publish_topic);
 
 	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
 	if(client->publish_msg->fixed_header.qos_level > 0)
 	{
-		publish_message_length = strlen(publish_message) + 2;
+		payload_message_length = strlen(publish_message) + MQTT_MESSAGE_ID_OFFSET;
 	}
 	else
 	{
-		publish_message_length = strlen(publish_message);
+		payload_message_length = strlen(publish_message);
 	}
 
 	/* Check for overflow condition, if topic and message length is not greater than specified length */
-	if(publish_topic_length > MQTT_TOPIC_LENGTH || publish_message_length > PUBLISH_PAYLOAD_LENGTH)
+	if(publish_topic_length > MQTT_TOPIC_LENGTH || payload_message_length > PUBLISH_PAYLOAD_LENGTH)
 	{
 		return func_param_len_error;
 	}
 
-
+	/* Fill main publish structure */
 	client->publish_msg->fixed_header.message_type = MQTT_PUBLISH_MESSAGE;
-	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
 
+	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
 
 	/* Copy topic to publish topic member */
 	strncpy(client->publish_msg->topic_name, publish_topic, publish_topic_length);
@@ -215,20 +223,22 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 		client->publish_msg->payload[0] = 0;
 		client->publish_msg->payload[1] = 1;
 
-		strcpy(client->publish_msg->payload + 2, publish_message);
+		strcpy(client->publish_msg->payload + MQTT_MESSAGE_ID_OFFSET, publish_message);
 	}
 	else
 	{
-		strncpy(client->publish_msg->payload, publish_message, publish_message_length);
+		strncpy(client->publish_msg->payload, publish_message, payload_message_length);
 	}
 
 	/* TODO can be improved*/
-	client->publish_msg->fixed_header.message_length = publish_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
+	client->publish_msg->fixed_header.message_length = payload_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
 
 	message_length = client->publish_msg->fixed_header.message_length + FIXED_HEADER_LENGTH;
 
 	return message_length;
 }
+
+
 
 
 
