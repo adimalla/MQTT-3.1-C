@@ -76,10 +76,11 @@
 
 
 /* @brief Defines for PUBLISH Message */
-#define MQTT_PUBLISH_MESSAGE      3               /*!< MQTT Publish message bit identifier value             */
-#define MQTT_TOPIC_LENGTH         TOPIC_LENGTH    /*!< Publish message topic length, mqtt_configs.h          */
-#define PUBLISH_PAYLOAD_LENGTH    MESSAGE_LENGTH  /*!< Publish message payload message length,mqtt_configs.h */
-#define MQTT_MESSAGE_ID_OFFSET    2               /*!< Publish message, message ID length offset value       */
+#define MQTT_PUBLISH_MESSAGE      3               /*!< MQTT Publish message bit identifier value                 */
+#define MQTT_TOPIC_LENGTH         TOPIC_LENGTH    /*!< Publish message topic length, mqtt_configs.h              */
+#define PUBLISH_PAYLOAD_LENGTH    MESSAGE_LENGTH  /*!< Publish message payload message length,mqtt_configs.h     */
+#define MQTT_MESSAGE_ID_OFFSET    2               /*!< Publish message, message ID length offset value           */
+#define PUBLISH_NULL_MESSAGE      "\0"            /*!< Publish NULL message for clearing retain at broker/server */
 
 
 /* Defines for PUBACK Message */
