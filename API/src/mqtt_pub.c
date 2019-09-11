@@ -327,6 +327,32 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 
 
+
+/*
+ * @brief  Configures mqtt PUBREL message structure.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t          : Length of disconnect message.
+ */
+size_t mqtt_publish_release(mqtt_client_t *client)
+{
+
+	size_t message_length = 0;
+
+	client->pubrel_msg->fixed_header.qos_level   = QOS_ATLEAST_ONCE;
+	client->pubrel_msg->fixed_header.message_type = MQTT_PUBREL_MESSAGE;
+
+	client->pubrel_msg->message_id = mqtt_htons(1);
+
+	message_length = sizeof(mqtt_pubrel_t);
+
+	client->pubrel_msg->fixed_header.message_length = (uint8_t)(message_length - FIXED_HEADER_LENGTH);
+
+	return message_length;
+}
+
+
+
+
 /*
  * @brief  Configures mqtt DISCONNECT message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
