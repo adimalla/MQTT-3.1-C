@@ -58,10 +58,10 @@ int main()
 
 	char message[2000]     = {0};
 	char read_buffer[1500] = {0};
-	char *my_client_name   = "pub|1234-adityamall";
+	char *my_client_name   = "pub|1990-adityamall";
 	char *my_client_topic  = "temperature/device1";
 	char user_name[]       = "device1.sensor";
-	char pass_word[]       = "1234";
+	char pass_word[]       = "4321";
 	char *pub_message;
 
 	uint8_t mqtt_message_state;
@@ -73,18 +73,19 @@ int main()
 	/* client socket */
 	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
 	{
-		fprintf(stderr,"Error: socket failed \n");
+		printf("Error: socket failed \n");
 		return -1;
 	}
 
 	server_addr.sin_family      = AF_INET;
 	server_addr.sin_port        = htons(PORT);
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	//server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	server_addr.sin_addr.s_addr = inet_addr("192.168.1.12");
 
 	/* Connect to server */
 	if( ( connect(client_sfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) ) < 0)
 	{
-		fprintf(stderr,"Error: connect failed \n");
+		printf("Error: connect failed \n");
 		return -1;
 	}
 
@@ -129,7 +130,7 @@ int main()
 			}
 			else
 			{
-				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+				mqtt_message_state = 0;
 			}
 
 			/* Clear read buffer after reading */
@@ -167,13 +168,15 @@ int main()
 			/* Update state */
 			mqtt_message_state = READ_STATE;
 
+			memset(message, '\0', sizeof(message));
+
 			break;
 
 
 		case mqtt_connack_state:
 
 			/* @brief print debug message */
-			printf("%s :Received CONNACK\n", my_client_name);
+			fprintf(stdout,"%s :Received CONNACK\n", my_client_name);
 
 			/* Check return code of CONNACK message */
 			publisher.connack_msg = (void *)read_buffer;
@@ -186,6 +189,7 @@ int main()
 			else if(publisher.connack_msg->return_code == MQTT_CONNECTION_REFUSED)
 			{
 
+				printf("connection refused\n");
 				/* TODO Update State for connack connection refused */
 
 			}
@@ -202,10 +206,10 @@ int main()
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_RETAIN, QOS_ATLEAST_ONCE);
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_FIRE_FORGET);
 
 			/* Configure publish message */
-			message_length = mqtt_publish(&publisher, my_client_topic, PUBLISH_NULL_MESSAGE);
+			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
 
 			/* @brief send publish message (Socket API) */
 			write(client_sfd, (char*)publisher.publish_msg, message_length);
@@ -261,6 +265,7 @@ int main()
 			printf("FSM Exit state \n");
 
 			/* Close socket */
+			shutdown(client_sfd, SHUT_RD);
 			close(client_sfd);
 
 			/* Suspend while loop */

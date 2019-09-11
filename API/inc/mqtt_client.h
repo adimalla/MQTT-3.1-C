@@ -66,7 +66,7 @@
 
 /* @brief Defines for CONNECT Message */
 #define MQTT_CONNECT_MESSAGE      1               /*!< MQTT Connect message bit identifier value */
-/* TODO add defines for connect options */
+
 
 
 /* @brief Defines for CONNACK Message */
@@ -114,6 +114,19 @@ typedef struct mqtt_header
 
 
 
+/* MQTT Pay-load options */
+typedef struct mqtt_payload_opts
+{
+	uint16_t             client_id_length;                     /*!< Client ID Length                                  */
+	char                 client_id[CLIENT_ID_LENGTH];          /*!< Client ID, length defined in mqtt_config.h        */
+	uint16_t             user_name_length;                     /*!< Client User Name Length                           */
+	char                 user_name[USER_NAME_LENGTH];          /*!< Client User Name, length defined in mqtt_config.h */
+	uint16_t             password_length;                      /*!< Client Password Length                            */
+	char                 password[PASSWORD_LENGTH];            /*!< Client Password, length defined in mqtt_config.h  */
+
+}payload_opts_t;
+
+
 /* @brief MQTT CONNECT structures */
 
 /* Connect Flags bit fields */
@@ -141,12 +154,8 @@ typedef struct mqtt_connect
 	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                             */
 	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                             */
 	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                           */
-	uint16_t             client_id_length;                     /*!< Client ID Length                                  */
-	char                 client_id[CLIENT_ID_LENGTH];          /*!< Client ID, length defined in mqtt_config.h        */
-	uint16_t             user_name_length;                     /*!< Client User Name Length                           */
-	char                 user_name[USER_NAME_LENGTH];          /*!< Client User Name, length defined in mqtt_config.h */
-	uint16_t             password_length;                      /*!< Client Password Length                            */
-	char                 password[PASSWORD_LENGTH];            /*!< Client Password, length defined in mqtt_config.h  */
+	char                 message_payload[100];
+	payload_opts_t       payload_options;
 
 }mqtt_connect_t;
 

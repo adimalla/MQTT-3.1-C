@@ -43,6 +43,17 @@
 /*                                                                            */
 /******************************************************************************/
 
+
+/* @brief Defines for CONNECT Message */
+#define CONNECT_PROTOCOL_LENGTH_SIZE   2
+#define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH
+#define CONNECT_PROTOCOL_VERSION_SIZE  1
+#define CONNECT_FLAGS_SIZE             1
+#define CONNECT_KEEP_ALIVE_TIME_SIZE   2
+#define CONNECT_CLIENT_ID_LENGTH_SIZE  2
+#define CONNECT_USER_NAME_LENGTH_SIZE  2
+#define CONNECT_PASSWORD_LENGTH_SIZE   2
+
 /* return codes for mqtt api functions */
 enum function_return_codes
 {
@@ -84,14 +95,20 @@ static uint16_t mqtt_htons(uint16_t value)
  */
 int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char *password)
 {
+	uint8_t user_name_length = 0;
+	uint8_t password_length  = 0;
+
+	user_name_length = strlen(user_name);
+	password_length = strlen(password);
+
 	/* check if user name is not null */
-	if( strlen(user_name) == 0 )
+	if( (user_name_length == 0) || (password_length == 0))
 	{
 		return func_opts_error;
 	}
 
 	/* check if user name and password doesn't exceed defined length, if yes return 0 */
-	if( strlen(user_name) > USER_NAME_LENGTH || strlen(password) > PASSWORD_LENGTH)
+	if( user_name_length > USER_NAME_LENGTH || password_length > PASSWORD_LENGTH)
 	{
 		return func_opts_error;
 	}
@@ -100,11 +117,15 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 		client->connect_msg->connect_flags.user_name_flag = ENABLE;
 		client->connect_msg->connect_flags.password_flag  = ENABLE;
 
-		strcpy(client->connect_msg->user_name, user_name);
-		strcpy(client->connect_msg->password, password);
 
-		client->connect_msg->user_name_length = mqtt_htons(USER_NAME_LENGTH);
-		client->connect_msg->password_length  = mqtt_htons(PASSWORD_LENGTH);
+		//client->connect_msg->message_payload[0] = 0;
+
+		client->connect_msg->payload_options.user_name_length = mqtt_htons(user_name_length);
+		strcpy(client->connect_msg->payload_options.user_name, user_name);
+
+		client->connect_msg->payload_options.password_length  = mqtt_htons(password_length);
+		strcpy(client->connect_msg->payload_options.password, password);
+
 	}
 
 	return func_opts_success;
@@ -121,23 +142,78 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
  */
 size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time)
 {
-	size_t message_length;
+	size_t  message_length     = 0;
+	uint8_t client_name_length = 0;
+	uint8_t user_name_length   = 0;
+	char    *user_name;
+	uint8_t password_length    = 0;
+	char    *password;
 
+	/* Check for client id length and truncate if greater than configuration specifed length */
+	client_name_length = strlen(client_name);
+	if(client_name_length > CLIENT_ID_LENGTH)
+	{
+		client_name_length = CLIENT_ID_LENGTH;
+	}
+
+	/* Fill mqtt  connect structure */
 	client->connect_msg->fixed_header.message_type  = MQTT_CONNECT_MESSAGE;
-	client->connect_msg->protocol_name_length 	    = mqtt_htons(PROTOCOL_NAME_LENGTH);
 
+	client->connect_msg->protocol_name_length = mqtt_htons(PROTOCOL_NAME_LENGTH);
 	strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
 
 	client->connect_msg->protocol_version = PROTOCOL_VERSION;
+
 	client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
-	client->connect_msg->client_id_length = mqtt_htons(CLIENT_ID_LENGTH);
 
-	strcpy(client->connect_msg->client_id, client_name);
+	uint8_t new_payload_index;
 
-	/* @brief calculate message length, fixed (Can be a constant) */
-	message_length = sizeof(mqtt_connect_t);
+	/* Populate payload message fields as per available payload options */
+	if(client->connect_msg->connect_flags.user_name_flag)
+	{
 
-	client->connect_msg->fixed_header.message_length = (uint8_t)( (message_length - FIXED_HEADER_LENGTH) );
+		client->connect_msg->message_payload[0] = 0;
+		client->connect_msg->message_payload[1] = client_name_length;
+		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
+
+		user_name_length = strlen(client->connect_msg->payload_options.user_name);
+		password_length = strlen(client->connect_msg->payload_options.password);
+
+
+		/* Update index for user name and length details */
+		new_payload_index = CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length;
+
+		client->connect_msg->message_payload[new_payload_index] = 0;
+		client->connect_msg->message_payload[new_payload_index + 1] = user_name_length;
+		strcpy(client->connect_msg->message_payload + new_payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name);
+
+
+		/* Update index for password and length details */
+		new_payload_index += CONNECT_USER_NAME_LENGTH_SIZE + user_name_length;
+
+		client->connect_msg->message_payload[new_payload_index] = 0;
+		client->connect_msg->message_payload[new_payload_index + 1] = password_length;
+		strcpy(client->connect_msg->message_payload + new_payload_index + 2, client->connect_msg->payload_options.password);
+
+		/* Configure message length */
+		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
+				CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length + CONNECT_USER_NAME_LENGTH_SIZE + CONNECT_PASSWORD_LENGTH_SIZE + \
+				user_name_length + password_length);
+	}
+	else
+	{
+
+		client->connect_msg->message_payload[0] = 0;
+		client->connect_msg->message_payload[1] = client_name_length;
+		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
+
+		/* Configure message length */
+		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
+				CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length);
+	}
+
+	client->connect_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
+
 
 	return message_length;
 }
