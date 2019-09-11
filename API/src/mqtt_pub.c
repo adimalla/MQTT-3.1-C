@@ -171,7 +171,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	/* Populate payload message fields as per available payload options */
 	if(client->connect_msg->connect_flags.user_name_flag)
 	{
-
+		/* Configure client ID and length */
 		client->connect_msg->message_payload[0] = 0;
 		client->connect_msg->message_payload[1] = client_name_length;
 		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
@@ -202,7 +202,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	}
 	else
 	{
-
+		/* Configure client ID and length */
 		client->connect_msg->message_payload[0] = 0;
 		client->connect_msg->message_payload[1] = client_name_length;
 		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
@@ -214,8 +214,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 	client->connect_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
 
-
-	return message_length;
+    return message_length;
 }
 
 
