@@ -43,6 +43,18 @@
 #define DEBUG 	  1
 #define DEBUG_ALL 0
 
+
+
+#define LOOPBACK 0
+#define IOT_LAB 1
+
+#if IOT_LAB
+#define RASP_IP_ADDR "192.168.1.186"
+#else
+#define RASP_IP_ADDR "192.168.1.12"
+#endif
+
+
 #define PORT 1883
 
 
@@ -79,8 +91,12 @@ int main()
 
 	server_addr.sin_family      = AF_INET;
 	server_addr.sin_port        = htons(PORT);
-	//server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	server_addr.sin_addr.s_addr = inet_addr("192.168.1.12");
+
+#if LOOPBACK
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+#else
+	server_addr.sin_addr.s_addr = inet_addr(RASP_IP_ADDR);
+#endif
 
 	/* Connect to server */
 	if( ( connect(client_sfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) ) < 0)
@@ -90,11 +106,12 @@ int main()
 	}
 
 
+	/* State machine initializations */
 	loop_state = FSM_RUN;
 
 	mqtt_message_state = IDLE_STATE;
 
-	/*@ MQTT Finite state machine */
+	/* MQTT Finite state machine */
 	while(loop_state)
 	{
 
@@ -120,11 +137,22 @@ int main()
 			publisher.message = (void*)read_buffer;
 
 			/* Update State */
-			if(publisher.message->message_type == MQTT_CONNACK_MESSAGE)
-			{
-				mqtt_message_state = publisher.message->message_type;
-			}
-			else if(publisher.message->message_type == MQTT_PUBACK_MESSAGE)
+			/* TODO implement get state for reading mqtt message type */
+//			if(publisher.message->message_type == MQTT_CONNACK_MESSAGE)
+//			{
+//				mqtt_message_state = publisher.message->message_type;
+//			}
+//			//else if(publisher.message->message_type == MQTT_PUBACK_MESSAGE || publisher.message->message_type == MQTT_PUBREC_MESSAGE || publisher.message->message_type == MQTT_PUBCOMP_MESSAGE)
+//			else if(publisher.message->message_type && (MQTT_PUBACK_MESSAGE | MQTT_PUBREC_MESSAGE | MQTT_PUBCOMP_MESSAGE))
+//			{
+//				mqtt_message_state = publisher.message->message_type;
+//			}
+//			else
+//			{
+//				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+//			}
+
+			if(publisher.message->message_type)
 			{
 				mqtt_message_state = publisher.message->message_type;
 			}
@@ -133,10 +161,12 @@ int main()
 				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
 			}
 
+
 			/* Clear read buffer after reading */
 			memset(read_buffer, '\0', sizeof(message));
 
 			break;
+
 
 
 		case mqtt_connect_state:
@@ -173,6 +203,7 @@ int main()
 			break;
 
 
+
 		case mqtt_connack_state:
 
 			/* @brief print debug message */
@@ -206,7 +237,7 @@ int main()
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_ATLEAST_ONCE);
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_EXACTLY_ONCE);
 
 			/* Configure publish message */
 			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
@@ -230,6 +261,7 @@ int main()
 			break;
 
 
+
 		case mqtt_puback_state:
 
 			printf("%s :Received PUBACK\n",my_client_name);
@@ -237,6 +269,47 @@ int main()
 			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
 
 			break;
+
+
+
+		case mqtt_pubrec_state:
+
+			printf("%s :Received PUBREL\n",my_client_name);
+
+			mqtt_message_state = MQTT_PUBREL_MESSAGE;
+
+			break;
+
+
+
+		case mqtt_pubrel_state:
+
+			/* Fill mqtt PUBREL message strcuture */
+			memset(message, '\0', sizeof(message));
+
+			publisher.pubrel_msg = (void *)message;
+
+			message_length = mqtt_publish_release(&publisher);
+
+			/* @brief send pubrel message (Socket API) */
+			write(client_sfd, (char*)publisher.pubrel_msg, message_length);
+
+			fprintf(stdout,"%s :Sending PUBREL\n",my_client_name);
+
+			mqtt_message_state = READ_STATE;
+
+			break;
+
+
+
+		case mqtt_pubcomp_state:
+
+			printf("%s :Received PUBCOMP\n",my_client_name);
+
+			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+
+			break;
+
 
 
 		case mqtt_disconnect_state:
@@ -249,7 +322,7 @@ int main()
 			message_length = mqtt_disconnect(&publisher);
 
 			/* Send Disconnect Message */
-			write(client_sfd, message, message_length);
+			write(client_sfd, (char*)publisher.disconnect_msg, message_length);
 
 			/* @brief print debug message */
 			printf("%s :Sending DISCONNECT\n",my_client_name);
@@ -258,6 +331,7 @@ int main()
 			mqtt_message_state = EXIT_STATE;
 
 			break;
+
 
 
 		case mqtt_exit_state:
