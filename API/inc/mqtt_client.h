@@ -101,7 +101,7 @@
 
 
 
-/* @brief MQTT Fixed Header, common to all control messages */
+/* MQTT Fixed Header, common to all control messages */
 typedef struct mqtt_header
 {
 	uint8_t retain_flag     : 1;  /*!< Message Retain Flag, (LSB)                                              */
@@ -127,6 +127,7 @@ typedef struct mqtt_payload_opts
 }payload_opts_t;
 
 
+
 /* @brief MQTT CONNECT structures */
 
 /* Connect Flags bit fields */
@@ -148,14 +149,14 @@ typedef struct mqtt_connect_flags
 /* Main MQTT Connect Structure */
 typedef struct mqtt_connect
 {
-	mqtt_header_t        fixed_header;                         /*!< MQTT Fixed Header                                 */
-	uint16_t             protocol_name_length;                 /*!< MQTT Protocol Name Length                         */
-	char                 protocol_name[PROTOCOL_NAME_LENGTH];  /*!< MQTT Protocol Name,length defined in configs.h    */
-	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                             */
-	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                             */
-	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                           */
-	char                 message_payload[100];
-	payload_opts_t       payload_options;
+	mqtt_header_t        fixed_header;                         /*!< MQTT Fixed Header                               */
+	uint16_t             protocol_name_length;                 /*!< MQTT Protocol Name Length                       */
+	char                 protocol_name[PROTOCOL_NAME_LENGTH];  /*!< MQTT Protocol Name,length defined in configs.h  */
+	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                           */
+	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                           */
+	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                         */
+	char                 message_payload[MESSAGE_LENGTH];      /*!< Connect Pay-load field                          */
+	payload_opts_t       payload_options;                      /*!< Connect Pay-load options, not sent to broker    */
 
 }mqtt_connect_t;
 
@@ -186,8 +187,7 @@ typedef struct mqtt_publish
 {
 	mqtt_header_t fixed_header;              /*!< MQTT Fixed Header            */
 	uint16_t      topic_length;              /*!< Publish message topic length */
-	char          topic_name[TOPIC_LENGTH];  /*!< Publish message topic name   */
-	char          payload[MESSAGE_LENGTH];   /*!< publish message payload      */
+	char          payload[MESSAGE_LENGTH];   /*!< publish message pay load     */
 
 }mqtt_publish_t;
 
@@ -215,7 +215,7 @@ enum mqtt_message_states
 	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
 	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,     /*!< Publish message send state             */
 	mqtt_puback_state     = MQTT_PUBACK_MESSAGE,      /*!< Puback message read state              */
-	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Diconect message send state            */
+	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 	mqtt_exit_state       = EXIT_STATE,               /*!< State machine exit state               */
 };
 

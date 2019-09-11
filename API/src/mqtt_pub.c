@@ -44,7 +44,7 @@
 /******************************************************************************/
 
 
-/* @brief Defines for CONNECT Message */
+/* @brief Defines for MQTT control packet Variable sizes */
 #define CONNECT_PROTOCOL_LENGTH_SIZE   2
 #define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH
 #define CONNECT_PROTOCOL_VERSION_SIZE  1
@@ -53,6 +53,7 @@
 #define CONNECT_CLIENT_ID_LENGTH_SIZE  2
 #define CONNECT_USER_NAME_LENGTH_SIZE  2
 #define CONNECT_PASSWORD_LENGTH_SIZE   2
+#define PUBLISH_TOPIC_LENGTH_SIZE      2
 
 /* return codes for mqtt api functions */
 enum function_return_codes
@@ -145,11 +146,10 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	size_t  message_length     = 0;
 	uint8_t client_name_length = 0;
 	uint8_t user_name_length   = 0;
-	char    *user_name;
 	uint8_t password_length    = 0;
-	char    *password;
+	uint8_t new_payload_index  = 0;
 
-	/* Check for client id length and truncate if greater than configuration specifed length */
+	/* Check for client id length and truncate if greater than configuration specified length */
 	client_name_length = strlen(client_name);
 	if(client_name_length > CLIENT_ID_LENGTH)
 	{
@@ -166,7 +166,6 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 	client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
 
-	uint8_t new_payload_index;
 
 	/* Populate payload message fields as per available payload options */
 	if(client->connect_msg->connect_flags.user_name_flag)
@@ -174,7 +173,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 		/* Configure client ID and length */
 		client->connect_msg->message_payload[0] = 0;
 		client->connect_msg->message_payload[1] = client_name_length;
-		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
+		strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
 
 		user_name_length = strlen(client->connect_msg->payload_options.user_name);
 		password_length = strlen(client->connect_msg->payload_options.password);
@@ -185,7 +184,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 		client->connect_msg->message_payload[new_payload_index] = 0;
 		client->connect_msg->message_payload[new_payload_index + 1] = user_name_length;
-		strcpy(client->connect_msg->message_payload + new_payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name);
+		strncpy(client->connect_msg->message_payload + new_payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name, user_name_length);
 
 
 		/* Update index for password and length details */
@@ -193,7 +192,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 		client->connect_msg->message_payload[new_payload_index] = 0;
 		client->connect_msg->message_payload[new_payload_index + 1] = password_length;
-		strcpy(client->connect_msg->message_payload + new_payload_index + 2, client->connect_msg->payload_options.password);
+		strncpy(client->connect_msg->message_payload + new_payload_index + 2, client->connect_msg->payload_options.password, password_length);
 
 		/* Configure message length */
 		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
@@ -205,7 +204,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 		/* Configure client ID and length */
 		client->connect_msg->message_payload[0] = 0;
 		client->connect_msg->message_payload[1] = client_name_length;
-		strcpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name);
+		strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
 
 		/* Configure message length */
 		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
@@ -263,22 +262,25 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 	uint8_t message_length         = 0;
 	uint8_t publish_topic_length   = 0;
-	uint8_t payload_message_length = 0;
+	uint8_t publish_message_length = 0;
+	uint8_t new_payload_index      = 0;
 
-	publish_topic_length   = strlen(publish_topic);
+
+	publish_topic_length = strlen(publish_topic);
 
 	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
 	if(client->publish_msg->fixed_header.qos_level > 0)
 	{
-		payload_message_length = strlen(publish_message) + MQTT_MESSAGE_ID_OFFSET;
+		publish_message_length = strlen(publish_message) + MQTT_MESSAGE_ID_OFFSET;
 	}
 	else
 	{
-		payload_message_length = strlen(publish_message);
+		publish_message_length = strlen(publish_message);
 	}
 
+
 	/* Check for overflow condition, if topic and message length is not greater than specified length */
-	if(publish_topic_length > MQTT_TOPIC_LENGTH || payload_message_length > PUBLISH_PAYLOAD_LENGTH)
+	if(publish_topic_length > MQTT_TOPIC_LENGTH || publish_message_length > PUBLISH_PAYLOAD_LENGTH)
 	{
 		return func_param_len_error;
 	}
@@ -286,34 +288,41 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 	/* Fill main publish structure */
 	client->publish_msg->fixed_header.message_type = MQTT_PUBLISH_MESSAGE;
 
-	client->publish_msg->topic_length = mqtt_htons(MQTT_TOPIC_LENGTH);
+	client->publish_msg->topic_length = mqtt_htons(publish_topic_length);
 
-	/* Copy topic to publish topic member */
-	strncpy(client->publish_msg->topic_name, publish_topic, publish_topic_length);
 
 	/* Copy message to publish pay load, insert message ID if quality of service > 0 */
 	if(client->publish_msg->fixed_header.qos_level > 0)
 	{
 
-		client->publish_msg->payload[0] = 0;
-		client->publish_msg->payload[1] = 1;
+		/* Copy topic to publish topic member */
+		strncpy(client->publish_msg->payload, publish_topic, publish_topic_length);
 
-		strcpy(client->publish_msg->payload + MQTT_MESSAGE_ID_OFFSET, publish_message);
+		/* Update pay load index*/
+		new_payload_index = publish_topic_length;
+
+		/* Configure topic length */
+		client->publish_msg->payload[publish_topic_length]     = 0;
+		client->publish_msg->payload[publish_topic_length + 1] = 1;
+
+		/* Copy pay load message */
+		strcpy(client->publish_msg->payload + new_payload_index + MQTT_MESSAGE_ID_OFFSET, publish_message);
 	}
 	else
 	{
-		strncpy(client->publish_msg->payload, publish_message, payload_message_length);
+		/* Copy topic to publish topic member */
+		strncpy(client->publish_msg->payload, publish_topic, publish_topic_length);
+
+		strncpy(client->publish_msg->payload + publish_topic_length, publish_message, publish_message_length);
 	}
 
-	/* TODO can be improved*/
-	client->publish_msg->fixed_header.message_length = payload_message_length + TOPIC_LENGTH + sizeof(client->publish_msg->topic_length);
+	/* Configure Message Length */
+	message_length = publish_message_length + publish_topic_length + PUBLISH_TOPIC_LENGTH_SIZE + FIXED_HEADER_LENGTH;
 
-	message_length = client->publish_msg->fixed_header.message_length + FIXED_HEADER_LENGTH;
+	client->publish_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
 
 	return message_length;
 }
-
-
 
 
 

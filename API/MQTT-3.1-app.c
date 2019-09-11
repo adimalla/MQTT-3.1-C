@@ -130,7 +130,7 @@ int main()
 			}
 			else
 			{
-				mqtt_message_state = 0;
+				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
 			}
 
 			/* Clear read buffer after reading */
@@ -198,7 +198,7 @@ int main()
 
 		case mqtt_publish_state:
 
-			pub_message = "Test Message from Client!!";
+			pub_message = "Test Message from client PC";
 
 			/* Fill mqtt PUBLISH message strcuture */
 			memset(message, '\0', sizeof(message));
@@ -206,7 +206,7 @@ int main()
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_FIRE_FORGET);
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_ATLEAST_ONCE);
 
 			/* Configure publish message */
 			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
@@ -215,7 +215,7 @@ int main()
 			write(client_sfd, (char*)publisher.publish_msg, message_length);
 
 			/* @brief print debug message */
-			printf("%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, publisher.publish_msg->topic_name, strlen(pub_message));
+			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
 
 			/* Update State */
 			if(message_status == QOS_ATLEAST_ONCE || message_status == QOS_EXACTLY_ONCE)
