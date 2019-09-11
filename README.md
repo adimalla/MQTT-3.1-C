@@ -6,7 +6,8 @@ MQTT version 3.1 client API libary for Mosquitto Broker in C.
 ![Version:1.0](https://img.shields.io/badge/Version-1.0-green.svg)
 ![In Development](https://img.shields.io/badge/Status-In%20Development-orange.svg)
 ![IDE:Eclipse](https://img.shields.io/badge/Ide-Eclipse-blue)
-![Protoc(ol:MQTT](https://img.shields.io/badge/Protocol-MQTT-blue)
+![Protocol:MQTT](https://img.shields.io/badge/Protocol-MQTT%20v3.1-blue)
+![mosquitto:v1.5.7](https://img.shields.io/badge/mosquitto-v1.5.7-green)
 ![License:MIT](https://img.shields.io/github/license/adimalla/MQTT-3.1-C?label=License)
 <br/>
 <br/>
