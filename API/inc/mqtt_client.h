@@ -86,6 +86,11 @@
 /* Defines for PUBACK Message */
 #define MQTT_PUBACK_MESSAGE       4               /*!< MQTT Puback message bit identifier value */
 
+/* PUBREC, PUBREL, PUBCOMP */
+#define MQTT_PUBREC_MESSAGE       5
+#define MQTT_PUBREL_MESSAGE       6
+#define MQTT_PUBCOMP_MESSAGE      7
+
 
 /* @brief Defines for Disconnect */
 #define MQTT_DISCONNECT_MESSAGE   14              /*!< MQTT Publish message bit identifier value */
@@ -144,6 +149,7 @@ typedef struct mqtt_connect_flags
 }mqtt_connect_flags_t;
 
 
+
 /* TODO test username password with broker*/
 
 /* Main MQTT Connect Structure */
@@ -193,6 +199,15 @@ typedef struct mqtt_publish
 
 
 
+typedef struct mqtt_pubrel
+{
+	mqtt_header_t fixed_header;              /*!< MQTT Fixed Header            */
+	uint16_t      message_id;                /*!< Pubrel message Identifier    */
+
+}mqtt_pubrel_t;
+
+
+
 /* @brief MQTT client handle structure */
 typedef struct mqtt_client_handle
 {
@@ -200,6 +215,7 @@ typedef struct mqtt_client_handle
 	mqtt_connect_t    *connect_msg;     /*!< Pointer to the connect message structure    */
 	mqtt_connack_t    *connack_msg;     /*!< Pointer to the connack message structure    */
 	mqtt_publish_t    *publish_msg;     /*!< Pointer to the publish message structure    */
+	mqtt_pubrel_t     *pubrel_msg;
 	mqtt_disconnect_t *disconnect_msg;  /*!< Pointer to the disconnect message structure */
 
 }mqtt_client_t;
@@ -215,6 +231,9 @@ enum mqtt_message_states
 	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
 	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,     /*!< Publish message send state             */
 	mqtt_puback_state     = MQTT_PUBACK_MESSAGE,      /*!< Puback message read state              */
+	mqtt_pubrec_state     = MQTT_PUBREC_MESSAGE,      /*!< Pubrec message read state              */
+	mqtt_pubrel_state     = MQTT_PUBREL_MESSAGE,      /*!< Pubrel message read state              */
+	mqtt_pubcomp_state    = MQTT_PUBCOMP_MESSAGE,     /*!< Pubcomp message read state             */
 	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 	mqtt_exit_state       = EXIT_STATE,               /*!< State machine exit state               */
 };
@@ -275,11 +294,21 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 
 /*
+ * @brief  Configures mqtt PUBREL message structure.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t          : Length of disconnect message.
+ */
+size_t mqtt_publish_release(mqtt_client_t *client);
+
+
+
+/*
  * @brief  Configures mqtt DISCONNECT message structure.
  * @param  *client : pointer to mqtt client structure (mqtt_client_t).
  * @retval size_t  : Length of disconnect message.
  */
 size_t mqtt_disconnect(mqtt_client_t *client);
+
 
 
 
