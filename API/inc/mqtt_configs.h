@@ -45,18 +45,17 @@
 
 /* @brief MQTT defines */
 
-#define FIXED_HEADER_LENGTH   2
+#define FIXED_HEADER_LENGTH   2         /*!<*/
 
-#define PROTOCOL_NAME_LENGTH  6
-#define PROTOCOL_NAME         "MQIsdp"
+#define PROTOCOL_NAME_LENGTH  6         /*!<*/
+#define PROTOCOL_NAME         "MQIsdp"  /*!<*/
 #define PROTOCOL_VERSION      3
 
-#define CLIENT_ID_LENGTH      23
-#define USER_NAME_LENGTH      23
-#define PASSWORD_LENGTH       23
-#define TOPIC_LENGTH          23
-
-#define MESSAGE_LENGTH        100
+#define CLIENT_ID_LENGTH      23        /*!< ,fixed by mosquitto broker, do not change! */
+#define USER_NAME_LENGTH      15        /*!< ,variable can be changed by user */
+#define PASSWORD_LENGTH       10        /*!< ,variable can be changed by user */
+#define TOPIC_LENGTH          30        /*!<*/
+#define MESSAGE_LENGTH        100       /*!<*/
 
 
 #endif /* INC_MQTT_CONFIGS_H_ */

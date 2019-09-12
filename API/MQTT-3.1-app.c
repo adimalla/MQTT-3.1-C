@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    pub_mqtt.c, file name will change
+ * @file    MQTT-3,1-app.c
  * @author  Aditya Mall,
  * @brief   Example MQTT publish client, for mosquitto MQTT Broker
  *
@@ -36,17 +36,13 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 
-#include <mqtt_client.h>
+#include "mqtt_client.h"
 
 
 /* @brief MACRO defines */
-#define DEBUG 	  1
-#define DEBUG_ALL 0
-
-
 
 #define LOOPBACK 0
-#define IOT_LAB 1
+#define IOT_LAB 0
 
 #if IOT_LAB
 #define RASP_IP_ADDR "192.168.1.186"
@@ -79,7 +75,6 @@ int main()
 	uint8_t mqtt_message_state;
 
 	uint8_t loop_state = 0;
-
 	int retval = 0;
 
 	/* client socket */
@@ -89,8 +84,8 @@ int main()
 		return -1;
 	}
 
-	server_addr.sin_family      = AF_INET;
-	server_addr.sin_port        = htons(PORT);
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port   = htons(PORT);
 
 #if LOOPBACK
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -109,22 +104,20 @@ int main()
 	/* State machine initializations */
 	loop_state = FSM_RUN;
 
-	mqtt_message_state = IDLE_STATE;
+	mqtt_message_state = mqtt_idle_state;
 
 	/* MQTT Finite state machine */
 	while(loop_state)
 	{
-
 		switch(mqtt_message_state)
 		{
 
 		case mqtt_idle_state:
 
-			printf("FSM Idle Start \n");
+			fprintf(stdout,"FSM Idle Start");
 
-			loop_state = FSM_RUN;
-
-			mqtt_message_state = MQTT_CONNECT_MESSAGE;
+			/* Update state to connect to send connect message */
+			mqtt_message_state = mqtt_connect_state;
 
 			break;
 
@@ -132,38 +125,16 @@ int main()
 		case mqtt_read_state:
 
 			/* @brief Read Message type from the socket read buffer */
-			read( client_sfd , read_buffer, 1500);
+			read(client_sfd , read_buffer, 1500);
 
 			publisher.message = (void*)read_buffer;
 
-			/* Update State */
-			/* TODO implement get state for reading mqtt message type */
-//			if(publisher.message->message_type == MQTT_CONNACK_MESSAGE)
-//			{
-//				mqtt_message_state = publisher.message->message_type;
-//			}
-//			//else if(publisher.message->message_type == MQTT_PUBACK_MESSAGE || publisher.message->message_type == MQTT_PUBREC_MESSAGE || publisher.message->message_type == MQTT_PUBCOMP_MESSAGE)
-//			else if(publisher.message->message_type && (MQTT_PUBACK_MESSAGE | MQTT_PUBREC_MESSAGE | MQTT_PUBCOMP_MESSAGE))
-//			{
-//				mqtt_message_state = publisher.message->message_type;
-//			}
-//			else
-//			{
-//				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
-//			}
-
-			if(publisher.message->message_type)
+			/* get MQTT message type and update state */
+			mqtt_message_state = get_mqtt_message_type(&publisher);
+			if(!mqtt_message_state)
 			{
-				mqtt_message_state = publisher.message->message_type;
+				mqtt_message_state = mqtt_disconnect_state;
 			}
-			else
-			{
-				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
-			}
-
-
-			/* Clear read buffer after reading */
-			memset(read_buffer, '\0', sizeof(message));
 
 			break;
 
@@ -172,33 +143,54 @@ int main()
 		case mqtt_connect_state:
 
 			/* Fill mqtt CONNECT message structure */
+
+			memset(message, '\0', sizeof(message));
+
 			publisher.connect_msg = (void *)&message;
-			publisher.connect_msg->connect_flags.clean_session = ENABLE;
 
 			/* Setup User name password (optional) */
 			retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
 			if(retval == -1)
 			{
-				printf("Bad value of user name or password\n");
+				fprintf(stdout,"Bad value of user name or password\n");
 
-				mqtt_message_state = EXIT_STATE;
+				mqtt_message_state = mqtt_exit_state;
 
 				break;
 			}
+
+
+			/* Set connect options */
+			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, QOS_EXACTLY_ONCE, MQTT_MESSAGE_NO_RETAIN);
+			if(retval == -1)
+			{
+				fprintf(stdout,"Bad value of connect options params\n");
+
+				mqtt_message_state = mqtt_exit_state;
+
+				break;
+			}
+
 
 			/* Setup mqtt CONNECT Message  */
 			message_length = mqtt_connect(&publisher, my_client_name, 60);
 
 			/* Send mqtt CONNECT  (through socket API) */
-			write(client_sfd, (char*)publisher.connect_msg, message_length);
+			retval = write(client_sfd, (char*)publisher.connect_msg, message_length);
+			if(retval == -1)
+			{
+				printf("Connect write error, Socket closed by server \n");
+
+				mqtt_message_state = mqtt_exit_state;
+
+				break;
+			}
 
 			/* Print debug message */
-			printf("%s :Sending CONNECT\n", my_client_name);
+			fprintf(stdout, "%s :Sending CONNECT\n", my_client_name);
 
 			/* Update state */
-			mqtt_message_state = READ_STATE;
-
-			memset(message, '\0', sizeof(message));
+			mqtt_message_state = mqtt_read_state;
 
 			break;
 
@@ -212,19 +204,10 @@ int main()
 			/* Check return code of CONNACK message */
 			publisher.connack_msg = (void *)read_buffer;
 
-			if(publisher.connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
-			{
-				/* Update State */
-				mqtt_message_state = MQTT_PUBLISH_MESSAGE;
-			}
-			else if(publisher.connack_msg->return_code == MQTT_CONNECTION_REFUSED)
-			{
+			mqtt_message_state = get_connack_status(&publisher);
 
-				printf("connection refused\n");
-				/* TODO Update State for connack connection refused */
-
-			}
 			break;
+
 
 
 		case mqtt_publish_state:
@@ -238,9 +221,25 @@ int main()
 
 			/*Configure publish options */
 			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_EXACTLY_ONCE);
+			if(message_status == -1)
+			{
+				fprintf(stdout, "publish options param error\n");
+
+				mqtt_message_state = mqtt_disconnect_state;
+
+				break;
+			}
 
 			/* Configure publish message */
 			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
+			if(message_length == 0)
+			{
+				fprintf(stdout,"publish message param error\n");
+
+				mqtt_message_state = mqtt_disconnect_state;
+
+				break;
+			}
 
 			/* @brief send publish message (Socket API) */
 			write(client_sfd, (char*)publisher.publish_msg, message_length);
@@ -248,14 +247,14 @@ int main()
 			/* @brief print debug message */
 			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
 
-			/* Update State */
+			/* Update State according to quality of service */
 			if(message_status == QOS_ATLEAST_ONCE || message_status == QOS_EXACTLY_ONCE)
 			{
 				mqtt_message_state = READ_STATE;
 			}
 			else
 			{
-				mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+				mqtt_message_state =  mqtt_disconnect_state;
 			}
 
 			break;
@@ -266,7 +265,8 @@ int main()
 
 			printf("%s :Received PUBACK\n",my_client_name);
 
-			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+			mqtt_message_state =  mqtt_disconnect_state;
+			//mqtt_message_state =  mqtt_publish_state;
 
 			break;
 
@@ -276,7 +276,7 @@ int main()
 
 			printf("%s :Received PUBREL\n",my_client_name);
 
-			mqtt_message_state = MQTT_PUBREL_MESSAGE;
+			mqtt_message_state = mqtt_pubrel_state;
 
 			break;
 
@@ -296,7 +296,7 @@ int main()
 
 			fprintf(stdout,"%s :Sending PUBREL\n",my_client_name);
 
-			mqtt_message_state = READ_STATE;
+			mqtt_message_state = mqtt_read_state;
 
 			break;
 
@@ -306,7 +306,7 @@ int main()
 
 			printf("%s :Received PUBCOMP\n",my_client_name);
 
-			mqtt_message_state = MQTT_DISCONNECT_MESSAGE;
+			mqtt_message_state =  mqtt_disconnect_state;
 
 			break;
 
@@ -328,7 +328,7 @@ int main()
 			printf("%s :Sending DISCONNECT\n",my_client_name);
 
 			/* Update State */
-			mqtt_message_state = EXIT_STATE;
+			mqtt_message_state = mqtt_exit_state;
 
 			break;
 

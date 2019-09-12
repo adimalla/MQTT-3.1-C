@@ -55,18 +55,17 @@
 #define EXIT_STATE                18              /*!< Value of Exit state of finite state machine    */
 
 
-/* MQTT Header Options */
+/* MQTT Header and Connect Options */
 #define MQTT_MESSAGE_RETAIN       1               /*!< Retain mqtt message at server/broker       */
 #define MQTT_MESSAGE_NO_RETAIN    0               /*!< Do not retain message at server/broker     */
 #define QOS_FIRE_FORGET           0               /*!< Quality of service: at most once delivery  */
 #define QOS_ATLEAST_ONCE          1               /*!< Quality of service: at least once delivery */
 #define QOS_EXACTLY_ONCE          2               /*!< Quality of service: exactly once delivery  */
 #define QOS_RESERVED              3               /*!< Reserved bit, for future additions         */
-
+#define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */
 
 /* @brief Defines for CONNECT Message */
 #define MQTT_CONNECT_MESSAGE      1               /*!< MQTT Connect message bit identifier value */
-
 
 
 /* @brief Defines for CONNACK Message */
@@ -87,9 +86,9 @@
 #define MQTT_PUBACK_MESSAGE       4               /*!< MQTT Puback message bit identifier value */
 
 /* PUBREC, PUBREL, PUBCOMP */
-#define MQTT_PUBREC_MESSAGE       5
-#define MQTT_PUBREL_MESSAGE       6
-#define MQTT_PUBCOMP_MESSAGE      7
+#define MQTT_PUBREC_MESSAGE       5               /*!< */
+#define MQTT_PUBREL_MESSAGE       6               /*!< */
+#define MQTT_PUBCOMP_MESSAGE      7               /*!< */
 
 
 /* @brief Defines for Disconnect */
@@ -179,14 +178,6 @@ typedef struct mqtt_connack
 
 
 
-/* @brief MQTT disconnect structure */
-typedef struct mqtt_disconnect
-{
-	mqtt_header_t fixed_header;  /*!< MQTT Fixed Header */
-
-}mqtt_disconnect_t;
-
-
 
 /* @brief MQTT PUBLISH structure */
 typedef struct mqtt_publish
@@ -199,12 +190,22 @@ typedef struct mqtt_publish
 
 
 
+/* MQTT PUBREL structure  */
 typedef struct mqtt_pubrel
 {
 	mqtt_header_t fixed_header;              /*!< MQTT Fixed Header            */
 	uint16_t      message_id;                /*!< Pubrel message Identifier    */
 
 }mqtt_pubrel_t;
+
+
+
+/* @brief MQTT disconnect structure */
+typedef struct mqtt_disconnect
+{
+	mqtt_header_t fixed_header;  /*!< MQTT Fixed Header */
+
+}mqtt_disconnect_t;
 
 
 
@@ -272,6 +273,33 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 /*
+ * @brief  Configures mqtt connect options. (qos and retain don't have any effect on control packets currently)
+ * @param  *client : pointer to mqtt client structure (mqtt_client_t).
+ * @param  session : configure session type
+ * @param  qos     : configure quality of service
+ * @param  retain  : configure mention retention at broker.
+ * @retval int8_t  : 1 = Success, -1 = Error
+ */
+int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos, uint8_t retain);
+
+
+/*
+ * @brief  Returns the value of message type from input buffer.
+ * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
+ * @retval  uint8_t : value of message type.
+ */
+uint8_t get_mqtt_message_type(mqtt_client_t *client);
+
+
+/*
+ * @brief  Returns the value of connack message status from input buffer.
+ * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
+ * @retval  uint8_t : connack message return code.
+ */
+uint8_t get_connack_status(mqtt_client_t *client);
+
+
+/*
  * @brief  Configures mqtt PUBLISH message options.
  * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
  * @param  message_retain : Enable retain for message retention at broker
@@ -287,7 +315,7 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *publish_topic   : publish topic name
  * @param  *publish_message : message to be published
- * @retval size_t           : length of PUBLISH control packet.
+ * @retval size_t           : length of publish control packet.
  */
 size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message);
 
@@ -296,7 +324,7 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 /*
  * @brief  Configures mqtt PUBREL message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
- * @retval size_t          : Length of disconnect message.
+ * @retval size_t          : Length of publish release message.
  */
 size_t mqtt_publish_release(mqtt_client_t *client);
 

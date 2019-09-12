@@ -1,11 +1,11 @@
 /**
  ******************************************************************************
- * @file    mqtt_pub.c, file name will change
+ * @file    mqtt_client.c
  * @author  Aditya Mall,
  * @brief   Example MQTT publish client, for mosquitto MQTT Broker
  *
  *  Info
- *          API
+ *          MQTT API Source File
  *
  ******************************************************************************
  * @attention
@@ -32,7 +32,6 @@
  */
 #include <stdint.h>
 #include <string.h>
-#include "mqtt_configs.h"
 #include "mqtt_client.h"
 
 
@@ -45,15 +44,16 @@
 
 
 /* @brief Defines for MQTT control packet Variable sizes */
-#define CONNECT_PROTOCOL_LENGTH_SIZE   2
-#define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH
-#define CONNECT_PROTOCOL_VERSION_SIZE  1
-#define CONNECT_FLAGS_SIZE             1
-#define CONNECT_KEEP_ALIVE_TIME_SIZE   2
-#define CONNECT_CLIENT_ID_LENGTH_SIZE  2
-#define CONNECT_USER_NAME_LENGTH_SIZE  2
-#define CONNECT_PASSWORD_LENGTH_SIZE   2
-#define PUBLISH_TOPIC_LENGTH_SIZE      2
+#define CONNECT_PROTOCOL_LENGTH_SIZE   2                       /*!< */
+#define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH    /*!< */
+#define CONNECT_PROTOCOL_VERSION_SIZE  1                       /*!< */
+#define CONNECT_FLAGS_SIZE             1                       /*!< */
+#define CONNECT_KEEP_ALIVE_TIME_SIZE   2                       /*!< */
+#define CONNECT_CLIENT_ID_LENGTH_SIZE  2                       /*!< */
+#define CONNECT_USER_NAME_LENGTH_SIZE  2                       /*!< */
+#define CONNECT_PASSWORD_LENGTH_SIZE   2                       /*!< */
+#define PUBLISH_TOPIC_LENGTH_SIZE      2                       /*!< */
+
 
 /* return codes for mqtt api functions */
 enum function_return_codes
@@ -84,6 +84,7 @@ static uint16_t mqtt_htons(uint16_t value)
 
 	return value;
 }
+
 
 
 
@@ -118,15 +119,49 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 		client->connect_msg->connect_flags.user_name_flag = ENABLE;
 		client->connect_msg->connect_flags.password_flag  = ENABLE;
 
-
-		//client->connect_msg->message_payload[0] = 0;
-
 		client->connect_msg->payload_options.user_name_length = mqtt_htons(user_name_length);
 		strcpy(client->connect_msg->payload_options.user_name, user_name);
 
 		client->connect_msg->payload_options.password_length  = mqtt_htons(password_length);
 		strcpy(client->connect_msg->payload_options.password, password);
 
+	}
+
+	return func_opts_success;
+}
+
+
+
+/*
+ * @brief  Configures mqtt connect options. (qos and retain don't have any effect on control packets currently)
+ * @param  *client : pointer to mqtt client structure (mqtt_client_t).
+ * @param  session : configure session type
+ * @param  qos     : configure quality of service
+ * @param  retain  : configure mention retention at broker.
+ * @retval int8_t  : 1 = Success, -1 = Error
+ */
+int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos, uint8_t retain)
+{
+	/* Check for correct values of session, retain and qos(quality of service) */
+	if(session > 1 || retain > 1 || qos > QOS_RESERVED)
+	{
+		return func_opts_error;
+	}
+
+	client->connect_msg->connect_flags.clean_session = session;
+
+	/* Enable will flag and if qos and retain are enabled by user */
+	if(qos || retain)
+	{
+		client->connect_msg->connect_flags.will_qos    = qos;
+		client->connect_msg->connect_flags.will_retain = retain;
+		client->connect_msg->connect_flags.will_flag   = ENABLE;
+	}
+	else
+	{
+		client->connect_msg->connect_flags.will_qos    = qos;
+		client->connect_msg->connect_flags.will_retain = retain;
+		client->connect_msg->connect_flags.will_flag   = DISABLE;
 	}
 
 	return func_opts_success;
@@ -147,7 +182,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	uint8_t client_name_length = 0;
 	uint8_t user_name_length   = 0;
 	uint8_t password_length    = 0;
-	uint8_t new_payload_index  = 0;
+	uint8_t payload_index  = 0;
 
 	/* Check for client id length and truncate if greater than configuration specified length */
 	client_name_length = strlen(client_name);
@@ -167,7 +202,10 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
 
 
-	/* Populate payload message fields as per available payload options */
+	/*
+	 * @brief Populate payload message fields as per available payload options,
+	 *        and append the index of payload array as per options.
+	 */
 	if(client->connect_msg->connect_flags.user_name_flag)
 	{
 		/* Configure client ID and length */
@@ -178,21 +216,20 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 		user_name_length = strlen(client->connect_msg->payload_options.user_name);
 		password_length = strlen(client->connect_msg->payload_options.password);
 
-
 		/* Update index for user name and length details */
-		new_payload_index = CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length;
+		payload_index = CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length;
 
-		client->connect_msg->message_payload[new_payload_index] = 0;
-		client->connect_msg->message_payload[new_payload_index + 1] = user_name_length;
-		strncpy(client->connect_msg->message_payload + new_payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name, user_name_length);
+		client->connect_msg->message_payload[payload_index]     = 0;
+		client->connect_msg->message_payload[payload_index + 1] = user_name_length;
+		strncpy(client->connect_msg->message_payload + payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name, user_name_length);
 
 
 		/* Update index for password and length details */
-		new_payload_index += CONNECT_USER_NAME_LENGTH_SIZE + user_name_length;
+		payload_index += CONNECT_USER_NAME_LENGTH_SIZE + user_name_length;
 
-		client->connect_msg->message_payload[new_payload_index] = 0;
-		client->connect_msg->message_payload[new_payload_index + 1] = password_length;
-		strncpy(client->connect_msg->message_payload + new_payload_index + 2, client->connect_msg->payload_options.password, password_length);
+		client->connect_msg->message_payload[payload_index]     = 0;
+		client->connect_msg->message_payload[payload_index + 1] = password_length;
+		strncpy(client->connect_msg->message_payload + payload_index + 2, client->connect_msg->payload_options.password, password_length);
 
 		/* Configure message length */
 		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
@@ -218,6 +255,41 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 
 
 
+/*
+ * @brief  Returns the value of message type from input buffer.
+ * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
+ * @retval  uint8_t : value of message type.
+ */
+uint8_t get_mqtt_message_type(mqtt_client_t *client)
+{
+	return client->message->message_type;
+}
+
+
+
+/*
+ * @brief  Returns the value of connack message status from input buffer.
+ * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
+ * @retval  uint8_t : connack message return code.
+ */
+uint8_t get_connack_status(mqtt_client_t *client)
+{
+	uint8_t message_state;
+
+	/* If connection accepted then publish message */
+	if(client->connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
+	{
+		message_state = MQTT_PUBLISH_MESSAGE;
+	}
+	else
+	{
+		message_state = MQTT_DISCONNECT_MESSAGE;
+	}
+
+	return message_state;
+}
+
+
 
 /*
  * @brief  Configures mqtt PUBLISH message options.
@@ -231,7 +303,6 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
 	if(message_retain)
 	{
 		client->publish_msg->fixed_header.retain_flag = ENABLE;
-
 	}
 
 	/* Check if Quality of service value (qos) is less than reserved value (val:3) */
@@ -255,7 +326,7 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *publish_topic   : publish topic name
  * @param  *publish_message : message to be published
- * @retval size_t           : length of PUBLISH control packet, retval = 0, if fail.
+ * @retval size_t           : length of publish control packet, fail = 0;
  */
 size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message)
 {
@@ -263,10 +334,11 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 	uint8_t message_length         = 0;
 	uint8_t publish_topic_length   = 0;
 	uint8_t publish_message_length = 0;
-	uint8_t new_payload_index      = 0;
+	uint8_t payload_index          = 0;
 
 
 	publish_topic_length = strlen(publish_topic);
+
 
 	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
 	if(client->publish_msg->fixed_header.qos_level > 0)
@@ -299,14 +371,14 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 		strncpy(client->publish_msg->payload, publish_topic, publish_topic_length);
 
 		/* Update pay load index*/
-		new_payload_index = publish_topic_length;
+		payload_index = publish_topic_length;
 
 		/* Configure topic length */
-		client->publish_msg->payload[publish_topic_length]     = 0;
-		client->publish_msg->payload[publish_topic_length + 1] = 1;
+		client->publish_msg->payload[payload_index]     = 0;
+		client->publish_msg->payload[payload_index + 1] = 1;
 
-		/* Copy pay load message */
-		strcpy(client->publish_msg->payload + new_payload_index + MQTT_MESSAGE_ID_OFFSET, publish_message);
+		/* Copy pay-load message */
+		strcpy(client->publish_msg->payload + payload_index + MQTT_MESSAGE_ID_OFFSET, publish_message);
 	}
 	else
 	{
@@ -327,11 +399,10 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 
 
-
 /*
  * @brief  Configures mqtt PUBREL message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
- * @retval size_t          : Length of disconnect message.
+ * @retval size_t          : Length of publish release message.
  */
 size_t mqtt_publish_release(mqtt_client_t *client)
 {
