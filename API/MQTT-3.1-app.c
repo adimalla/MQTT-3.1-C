@@ -42,7 +42,10 @@
 /* @brief MACRO defines */
 
 #define LOOPBACK 0
-#define IOT_LAB 0
+#define IOT_LAB  0
+#define WLAN     1
+
+#if WLAN
 
 #if IOT_LAB
 #define RASP_IP_ADDR "192.168.1.186"
@@ -50,6 +53,9 @@
 #define RASP_IP_ADDR "192.168.1.12"
 #endif
 
+#else
+#define RASP_IP_ADDR "10.42.0.217"
+#endif
 
 #define PORT 1883
 
