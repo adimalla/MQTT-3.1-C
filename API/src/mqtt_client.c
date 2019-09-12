@@ -181,7 +181,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	uint8_t client_name_length = 0;
 	uint8_t user_name_length   = 0;
 	uint8_t password_length    = 0;
-	uint8_t payload_index  = 0;
+	uint8_t payload_index      = 0;
 
 	/* Check for client id length and truncate if greater than configuration specified length */
 	client_name_length = strlen(client_name);
