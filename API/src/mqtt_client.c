@@ -87,7 +87,6 @@ static uint16_t mqtt_htons(uint16_t value)
 
 
 
-
 /*
  * @brief  Configures mqtt client user name and password.
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
@@ -320,7 +319,6 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8
 
 
 
-
 /*
  * @brief  Configures mqtt PUBLISH message structure.
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
@@ -398,7 +396,6 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
 
 
 
-
 /*
  * @brief  Configures mqtt PUBREL message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
@@ -423,7 +420,6 @@ size_t mqtt_publish_release(mqtt_client_t *client)
 
 
 
-
 /*
  * @brief  Configures mqtt DISCONNECT message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
@@ -443,43 +439,5 @@ size_t mqtt_disconnect(mqtt_client_t *client)
 	return message_length;
 }
 
-
-
-
-
-#if 0
-static char *reverse_string(const char *string_value)
-{
-	int8_t i = 0, j = 0;           /*!< Loop Variables        */
-
-	uint8_t     string_length;     /*!< Length of string      */
-	static char *string_reversed;  /*!< Reversed string value */
-
-	/*@brief check if string is not NULL, if yes, return NULL and exit */
-	if(string_value == NULL)
-	{
-		return NULL;
-	}
-
-	/*@brief Calculate String Length and specify size of fixed memory allocator array */
-	string_length = strlen(string_value);
-
-	char fixed_mem_alloc[string_length];
-
-	string_reversed = fixed_mem_alloc;
-
-	memset(string_reversed, 0, string_length);
-
-	/*@brief reverse string */
-	for(i = string_length - 1; i >= 0; i--)
-	{
-		string_reversed[j++] = string_value[i];
-	}
-
-
-	return string_reversed;
-
-}
-#endif
 
 

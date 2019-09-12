@@ -26,6 +26,8 @@
  ******************************************************************************
  */
 
+/* TODO test username password with broker*/
+
 #ifndef MQQT_CLIENT_H_
 #define MQQT_CLIENT_H_
 
@@ -38,7 +40,7 @@
 
 /******************************************************************************/
 /*                                                                            */
-/*                       Macros and Defines                                   */
+/*                            Macro Defines                                   */
 /*                                                                            */
 /******************************************************************************/
 
@@ -64,6 +66,7 @@
 #define QOS_RESERVED              3               /*!< Reserved bit, for future additions         */
 #define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */
 
+
 /* @brief Defines for CONNECT Message */
 #define MQTT_CONNECT_MESSAGE      1               /*!< MQTT Connect message bit identifier value */
 
@@ -85,15 +88,15 @@
 /* Defines for PUBACK Message */
 #define MQTT_PUBACK_MESSAGE       4               /*!< MQTT Puback message bit identifier value */
 
+
 /* PUBREC, PUBREL, PUBCOMP */
-#define MQTT_PUBREC_MESSAGE       5               /*!< */
-#define MQTT_PUBREL_MESSAGE       6               /*!< */
-#define MQTT_PUBCOMP_MESSAGE      7               /*!< */
+#define MQTT_PUBREC_MESSAGE       5               /*!< MQTT Publish receive message bit identifier value  */
+#define MQTT_PUBREL_MESSAGE       6               /*!< MQTT Publish release message bit identifier value  */
+#define MQTT_PUBCOMP_MESSAGE      7               /*!< MQTT Publish complete message bit identifier value */
 
 
 /* @brief Defines for Disconnect */
 #define MQTT_DISCONNECT_MESSAGE   14              /*!< MQTT Publish message bit identifier value */
-
 
 
 
@@ -102,7 +105,6 @@
 /*                  Data Structures for MQTT Control Messages                 */
 /*                                                                            */
 /******************************************************************************/
-
 
 
 /* MQTT Fixed Header, common to all control messages */
@@ -116,20 +118,17 @@ typedef struct mqtt_header
 
 }mqtt_header_t;
 
-
-
-/* MQTT Pay-load options */
+/* MQTT Payload options */
 typedef struct mqtt_payload_opts
 {
-	uint16_t             client_id_length;                     /*!< Client ID Length                                  */
-	char                 client_id[CLIENT_ID_LENGTH];          /*!< Client ID, length defined in mqtt_config.h        */
-	uint16_t             user_name_length;                     /*!< Client User Name Length                           */
-	char                 user_name[USER_NAME_LENGTH];          /*!< Client User Name, length defined in mqtt_config.h */
-	uint16_t             password_length;                      /*!< Client Password Length                            */
-	char                 password[PASSWORD_LENGTH];            /*!< Client Password, length defined in mqtt_config.h  */
+	uint16_t             client_id_length;             /*!< Client ID Length                                  */
+	char                 client_id[CLIENT_ID_LENGTH];  /*!< Client ID, length defined in mqtt_config.h        */
+	uint16_t             user_name_length;             /*!< Client User Name Length                           */
+	char                 user_name[USER_NAME_LENGTH];  /*!< Client User Name, length defined in mqtt_config.h */
+	uint16_t             password_length;              /*!< Client Password Length                            */
+	char                 password[PASSWORD_LENGTH];    /*!< Client Password, length defined in mqtt_config.h  */
 
 }payload_opts_t;
-
 
 
 /* @brief MQTT CONNECT structures */
@@ -147,10 +146,6 @@ typedef struct mqtt_connect_flags
 
 }mqtt_connect_flags_t;
 
-
-
-/* TODO test username password with broker*/
-
 /* Main MQTT Connect Structure */
 typedef struct mqtt_connect
 {
@@ -166,7 +161,6 @@ typedef struct mqtt_connect
 }mqtt_connect_t;
 
 
-
 /* @brief MQTT CONNACK structure */
 typedef struct mqtt_connack
 {
@@ -175,8 +169,6 @@ typedef struct mqtt_connack
 	uint8_t       return_code;   /*!< Connack Message return codes */
 
 }mqtt_connack_t;
-
-
 
 
 /* @brief MQTT PUBLISH structure */
@@ -189,24 +181,21 @@ typedef struct mqtt_publish
 }mqtt_publish_t;
 
 
-
 /* MQTT PUBREL structure  */
 typedef struct mqtt_pubrel
 {
-	mqtt_header_t fixed_header;              /*!< MQTT Fixed Header            */
-	uint16_t      message_id;                /*!< Pubrel message Identifier    */
+	mqtt_header_t fixed_header;  /*!< MQTT Fixed Header                  */
+	uint16_t      message_id;    /*!< Publish release message Identifier */
 
 }mqtt_pubrel_t;
 
 
-
-/* @brief MQTT disconnect structure */
+/* MQTT disconnect structure */
 typedef struct mqtt_disconnect
 {
 	mqtt_header_t fixed_header;  /*!< MQTT Fixed Header */
 
 }mqtt_disconnect_t;
-
 
 
 /* @brief MQTT client handle structure */
@@ -216,14 +205,13 @@ typedef struct mqtt_client_handle
 	mqtt_connect_t    *connect_msg;     /*!< Pointer to the connect message structure    */
 	mqtt_connack_t    *connack_msg;     /*!< Pointer to the connack message structure    */
 	mqtt_publish_t    *publish_msg;     /*!< Pointer to the publish message structure    */
-	mqtt_pubrel_t     *pubrel_msg;
+	mqtt_pubrel_t     *pubrel_msg;      /*!< Pointer to the pubrel message structure     */
 	mqtt_disconnect_t *disconnect_msg;  /*!< Pointer to the disconnect message structure */
 
 }mqtt_client_t;
 
 
-
-/* @brief MQTT message types for State Machine */
+/* @brief MQTT State Machine message states */
 enum mqtt_message_states
 {
 	mqtt_idle_state       = IDLE_STATE,               /*!< State machine Idle State               */
@@ -238,7 +226,6 @@ enum mqtt_message_states
 	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 	mqtt_exit_state       = EXIT_STATE,               /*!< State machine exit state               */
 };
-
 
 
 
@@ -283,6 +270,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos, uint8_t retain);
 
 
+
 /*
  * @brief  Returns the value of message type from input buffer.
  * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
@@ -291,12 +279,14 @@ int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos,
 uint8_t get_mqtt_message_type(mqtt_client_t *client);
 
 
+
 /*
  * @brief  Returns the value of connack message status from input buffer.
  * @param  *client  : pointer to mqtt client structure (mqtt_client_t).
  * @retval  uint8_t : connack message return code.
  */
 uint8_t get_connack_status(mqtt_client_t *client);
+
 
 
 /*

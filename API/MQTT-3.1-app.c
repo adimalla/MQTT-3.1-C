@@ -41,49 +41,54 @@
 
 /* @brief MACRO defines */
 
+#define PORT 1883
+
 #define LOOPBACK 0
 #define IOT_LAB  0
-#define WLAN     1
+#define WLAN     0
 
 #if WLAN
+	#if IOT_LAB
+	#define RASP_IP_ADDR "192.168.1.186"
+	#else
+	#define RASP_IP_ADDR "192.168.1.12"
+	#endif
 
-#if IOT_LAB
-#define RASP_IP_ADDR "192.168.1.186"
 #else
-#define RASP_IP_ADDR "192.168.1.12"
+	#define RASP_IP_ADDR "10.42.0.217"
+
 #endif
 
-#else
-#define RASP_IP_ADDR "10.42.0.217"
-#endif
-
-#define PORT 1883
 
 
 int main()
 {
-	int client_sfd;
+
+	/* Socket API related variable initializations */
+	int    client_sfd        = 0;
+	char   message[2000]     = {0};
+	char   read_buffer[1500] = {0};
 	struct sockaddr_in server_addr;
 
-	size_t message_length;
-	int8_t message_status;
-
+	/* MQTT client structure initializations */
 	mqtt_client_t publisher;
 
-	char message[2000]     = {0};
-	char read_buffer[1500] = {0};
+	/* Publisher State machine related variable initializations */
+	size_t  message_length      = 0;
+	int8_t  retval              = 0;
+	int8_t  message_status      = 0;
+	uint8_t loop_state          = 0;
+	uint8_t mqtt_message_state  = 0;
+
+	/* MQTT message buffers */
 	char *my_client_name   = "pub|1990-adityamall";
 	char *my_client_topic  = "temperature/device1";
 	char user_name[]       = "device1.sensor";
 	char pass_word[]       = "4321";
 	char *pub_message;
 
-	uint8_t mqtt_message_state;
 
-	uint8_t loop_state = 0;
-	int retval = 0;
-
-	/* client socket */
+	/* Open client socket */
 	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
 	{
 		printf("Error: socket failed \n");
@@ -99,7 +104,8 @@ int main()
 	server_addr.sin_addr.s_addr = inet_addr(RASP_IP_ADDR);
 #endif
 
-	/* Connect to server */
+
+	/* Connect to MQTT server host machine */
 	if( ( connect(client_sfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) ) < 0)
 	{
 		printf("Error: connect failed \n");
@@ -115,12 +121,13 @@ int main()
 	/* MQTT Finite state machine */
 	while(loop_state)
 	{
+
 		switch(mqtt_message_state)
 		{
 
 		case mqtt_idle_state:
 
-			fprintf(stdout,"FSM Idle Start");
+			fprintf(stdout,"FSM Idle Start\n");
 
 			/* Update state to connect to send connect message */
 			mqtt_message_state = mqtt_connect_state;
@@ -143,7 +150,6 @@ int main()
 			}
 
 			break;
-
 
 
 		case mqtt_connect_state:
@@ -177,7 +183,6 @@ int main()
 				break;
 			}
 
-
 			/* Setup mqtt CONNECT Message  */
 			message_length = mqtt_connect(&publisher, my_client_name, 60);
 
@@ -201,7 +206,6 @@ int main()
 			break;
 
 
-
 		case mqtt_connack_state:
 
 			/* @brief print debug message */
@@ -213,7 +217,6 @@ int main()
 			mqtt_message_state = get_connack_status(&publisher);
 
 			break;
-
 
 
 		case mqtt_publish_state:
@@ -266,7 +269,6 @@ int main()
 			break;
 
 
-
 		case mqtt_puback_state:
 
 			printf("%s :Received PUBACK\n",my_client_name);
@@ -277,7 +279,6 @@ int main()
 			break;
 
 
-
 		case mqtt_pubrec_state:
 
 			printf("%s :Received PUBREL\n",my_client_name);
@@ -285,7 +286,6 @@ int main()
 			mqtt_message_state = mqtt_pubrel_state;
 
 			break;
-
 
 
 		case mqtt_pubrel_state:
@@ -307,15 +307,13 @@ int main()
 			break;
 
 
-
 		case mqtt_pubcomp_state:
 
-			printf("%s :Received PUBCOMP\n",my_client_name);
+			fprintf(stdout,"%s :Received PUBCOMP\n",my_client_name);
 
 			mqtt_message_state =  mqtt_disconnect_state;
 
 			break;
-
 
 
 		case mqtt_disconnect_state:
@@ -331,7 +329,7 @@ int main()
 			write(client_sfd, (char*)publisher.disconnect_msg, message_length);
 
 			/* @brief print debug message */
-			printf("%s :Sending DISCONNECT\n",my_client_name);
+			fprintf(stdout,"%s :Sending DISCONNECT\n",my_client_name);
 
 			/* Update State */
 			mqtt_message_state = mqtt_exit_state;
@@ -339,10 +337,9 @@ int main()
 			break;
 
 
-
 		case mqtt_exit_state:
 
-			printf("FSM Exit state \n");
+			fprintf(stdout,"FSM Exit state \n");
 
 			/* Close socket */
 			shutdown(client_sfd, SHUT_RD);
@@ -360,7 +357,7 @@ int main()
 
 	}
 
-	printf("Exit from FSM \n");
+	fprintf(stdout,"Exit from FSM \n");
 
 	return 0;
 }
