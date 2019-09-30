@@ -57,14 +57,14 @@
 #define EXIT_STATE                18              /*!< Value of Exit state of finite state machine    */
 
 
-/* MQTT Header and Connect Options */
-#define MQTT_MESSAGE_RETAIN       1               /*!< Retain mqtt message at server/broker       */
-#define MQTT_MESSAGE_NO_RETAIN    0               /*!< Do not retain message at server/broker     */
+/* MQTT Header and Connect Options */ /*TODO header and connect options should be enum */
+#define MQTT_MESSAGE_RETAIN       1               /*!< Retain mqtt message at server/broker       */ // message_retain
+#define MQTT_MESSAGE_NO_RETAIN    0               /*!< Do not retain message at server/broker     */ // message_no_retain
 #define QOS_FIRE_FORGET           0               /*!< Quality of service: at most once delivery  */
 #define QOS_ATLEAST_ONCE          1               /*!< Quality of service: at least once delivery */
 #define QOS_EXACTLY_ONCE          2               /*!< Quality of service: exactly once delivery  */
 #define QOS_RESERVED              3               /*!< Reserved bit, for future additions         */
-#define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */
+#define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */ // connect_clean_session
 
 
 /* @brief Defines for CONNECT Message */
@@ -98,6 +98,9 @@
 /* @brief Defines for Disconnect */
 #define MQTT_DISCONNECT_MESSAGE   14              /*!< MQTT Publish message bit identifier value */
 
+
+/* Defines for MQTT SUBSRIBE message */
+#define MQTT_SUBSCRIBE_MESSAGE    8
 
 
 /******************************************************************************/
@@ -154,7 +157,7 @@ typedef struct mqtt_connect
 	char                 protocol_name[PROTOCOL_NAME_LENGTH];  /*!< MQTT Protocol Name,length defined in configs.h  */
 	uint8_t              protocol_version;                     /*!< MQTT Protocol Version                           */
 	mqtt_connect_flags_t connect_flags;                        /*!< Connect Message Flags                           */
-	uint16_t             keep_alive_value;                     /*!< Client Keep Alive Value                         */
+	int16_t              keep_alive_value;                     /*!< Client Keep Alive Value                         */
 	char                 message_payload[MESSAGE_LENGTH];      /*!< Connect Pay-load field                          */
 	payload_opts_t       payload_options;                      /*!< Connect Pay-load options, not sent to broker    */
 
@@ -190,12 +193,27 @@ typedef struct mqtt_pubrel
 }mqtt_pubrel_t;
 
 
+
+
 /* MQTT disconnect structure */
 typedef struct mqtt_disconnect
 {
 	mqtt_header_t fixed_header;  /*!< MQTT Fixed Header */
 
 }mqtt_disconnect_t;
+
+
+
+/* MQTT SUBSCRIBE structure */
+typedef struct mqtt_subscribe
+{
+	mqtt_header_t fixed_header;            /*!< */
+	uint16_t      message_identifier;      /*!< */
+	uint16_t      topic_length;            /*!< */
+	char          payload[MESSAGE_LENGTH]; /*!< */
+
+}mqtt_subscribe_t;
+
 
 
 /* @brief MQTT client handle structure */
@@ -206,6 +224,9 @@ typedef struct mqtt_client_handle
 	mqtt_connack_t    *connack_msg;     /*!< Pointer to the connack message structure    */
 	mqtt_publish_t    *publish_msg;     /*!< Pointer to the publish message structure    */
 	mqtt_pubrel_t     *pubrel_msg;      /*!< Pointer to the pubrel message structure     */
+
+	mqtt_subscribe_t  *subscribe_msg;   /*!< Pointer to the subscribe structure          */
+
 	mqtt_disconnect_t *disconnect_msg;  /*!< Pointer to the disconnect message structure */
 
 }mqtt_client_t;
@@ -224,6 +245,11 @@ enum mqtt_message_states
 	mqtt_pubrel_state     = MQTT_PUBREL_MESSAGE,      /*!< Pubrel message read state              */
 	mqtt_pubcomp_state    = MQTT_PUBCOMP_MESSAGE,     /*!< Pubcomp message read state             */
 	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
+
+	mqtt_subscribe_state  = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state */
+
+	mqtt_subback_state = 9,
+
 	mqtt_exit_state       = EXIT_STATE,               /*!< State machine exit state               */
 };
 
@@ -255,7 +281,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
  * @param  keep_alive_time : Keep Alive time for the client.
  * @retval size_t          : Length of connect message.
  */
-size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time);
+size_t mqtt_connect(mqtt_client_t *client, char *client_name, int16_t keep_alive_time);
 
 
 
@@ -327,6 +353,8 @@ size_t mqtt_publish_release(mqtt_client_t *client);
  */
 size_t mqtt_disconnect(mqtt_client_t *client);
 
+
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, uint8_t qos);
 
 
 
