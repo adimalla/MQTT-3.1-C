@@ -175,7 +175,7 @@ int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos,
  * @param  keep_alive_time : Keep Alive time for the client.
  * @retval size_t          : Length of connect message.
  */
-size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_alive_time)
+size_t mqtt_connect(mqtt_client_t *client, char *client_name, int16_t keep_alive_time)
 {
 	size_t  message_length     = 0;
 	uint8_t client_name_length = 0;
@@ -183,73 +183,87 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, uint16_t keep_aliv
 	uint8_t password_length    = 0;
 	uint8_t payload_index      = 0;
 
-	/* Check for client id length and truncate if greater than configuration specified length */
-	client_name_length = strlen(client_name);
-	if(client_name_length > CLIENT_ID_LENGTH)
+	size_t func_retval;
+
+	/* TODO Implement error checks in mqtt connect */
+	if(keep_alive_time < 0 || client_name == NULL || client == NULL)
 	{
-		client_name_length = CLIENT_ID_LENGTH;
-	}
-
-	/* Fill mqtt  connect structure */
-	client->connect_msg->fixed_header.message_type  = MQTT_CONNECT_MESSAGE;
-
-	client->connect_msg->protocol_name_length = mqtt_htons(PROTOCOL_NAME_LENGTH);
-	strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
-
-	client->connect_msg->protocol_version = PROTOCOL_VERSION;
-
-	client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
-
-
-	/*
-	 * @brief Populate payload message fields as per available payload options,
-	 *        and append the index of payload array as per options.
-	 */
-	if(client->connect_msg->connect_flags.user_name_flag)
-	{
-		/* Configure client ID and length */
-		client->connect_msg->message_payload[0] = 0;
-		client->connect_msg->message_payload[1] = client_name_length;
-		strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
-
-		user_name_length = strlen(client->connect_msg->payload_options.user_name);
-		password_length = strlen(client->connect_msg->payload_options.password);
-
-		/* Update index for user name and length details */
-		payload_index = CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length;
-
-		client->connect_msg->message_payload[payload_index]     = 0;
-		client->connect_msg->message_payload[payload_index + 1] = user_name_length;
-		strncpy(client->connect_msg->message_payload + payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name, user_name_length);
-
-
-		/* Update index for password and length details */
-		payload_index += CONNECT_USER_NAME_LENGTH_SIZE + user_name_length;
-
-		client->connect_msg->message_payload[payload_index]     = 0;
-		client->connect_msg->message_payload[payload_index + 1] = password_length;
-		strncpy(client->connect_msg->message_payload + payload_index + 2, client->connect_msg->payload_options.password, password_length);
-
-		/* Configure message length */
-		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
-				CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length + CONNECT_USER_NAME_LENGTH_SIZE + CONNECT_PASSWORD_LENGTH_SIZE + \
-				user_name_length + password_length);
+		func_retval = (size_t)func_param_len_error;
 	}
 	else
 	{
-		/* Configure client ID and length */
-		client->connect_msg->message_payload[0] = 0;
-		client->connect_msg->message_payload[1] = client_name_length;
-		strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
+		/* Check for client id length and truncate if greater than configuration specified length */
+		client_name_length = strlen(client_name);
+		if(client_name_length > CLIENT_ID_LENGTH)
+		{
+			client_name_length = CLIENT_ID_LENGTH;
+		}
 
-		/* Configure message length */
-		message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
-				CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length);
+		/* Fill mqtt  connect structure */
+		client->connect_msg->fixed_header.message_type  = MQTT_CONNECT_MESSAGE;
+
+		client->connect_msg->protocol_name_length = mqtt_htons(PROTOCOL_NAME_LENGTH);
+		strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
+
+		client->connect_msg->protocol_version = PROTOCOL_VERSION;
+
+		client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
+
+
+		/*
+		 * @brief Populate payload message fields as per available payload options,
+		 *        and append the index of payload array as per options.
+		 */
+		if(client->connect_msg->connect_flags.user_name_flag)
+		{
+			/* Configure client ID and length */
+			client->connect_msg->message_payload[0] = 0;
+			client->connect_msg->message_payload[1] = client_name_length;
+			strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
+
+			user_name_length = strlen(client->connect_msg->payload_options.user_name);
+			password_length = strlen(client->connect_msg->payload_options.password);
+
+			/* Update index for user name and length details */
+			payload_index = CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length;
+
+			client->connect_msg->message_payload[payload_index]     = 0;
+			client->connect_msg->message_payload[payload_index + 1] = user_name_length;
+			strncpy(client->connect_msg->message_payload + payload_index + CONNECT_USER_NAME_LENGTH_SIZE, client->connect_msg->payload_options.user_name, user_name_length);
+
+
+			/* Update index for password and length details */
+			payload_index += CONNECT_USER_NAME_LENGTH_SIZE + user_name_length;
+
+			client->connect_msg->message_payload[payload_index]     = 0;
+			client->connect_msg->message_payload[payload_index + 1] = password_length;
+			strncpy(client->connect_msg->message_payload + payload_index + 2, client->connect_msg->payload_options.password, password_length);
+
+			/* Configure message length */
+			message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
+					CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length + CONNECT_USER_NAME_LENGTH_SIZE + CONNECT_PASSWORD_LENGTH_SIZE + \
+					user_name_length + password_length);
+
+		}
+		else
+		{
+			/* Configure client ID and length */
+			client->connect_msg->message_payload[0] = 0;
+			client->connect_msg->message_payload[1] = client_name_length;
+			strncpy(client->connect_msg->message_payload + CONNECT_CLIENT_ID_LENGTH_SIZE, client_name, client_name_length);
+
+			/* Configure message length */
+			message_length = (size_t)(FIXED_HEADER_LENGTH + CONNECT_PROTOCOL_LENGTH_SIZE + CONNECT_PROTOCOL_NAME_SIZE + CONNECT_PROTOCOL_VERSION_SIZE + CONNECT_FLAGS_SIZE + \
+					CONNECT_KEEP_ALIVE_TIME_SIZE + CONNECT_CLIENT_ID_LENGTH_SIZE + client_name_length);
+
+		}
+
+		client->connect_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
+
+		func_retval = message_length;
 	}
 
-	client->connect_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
-
-    return message_length;
+	return func_retval;
 }
 
 
@@ -419,7 +433,6 @@ size_t mqtt_publish_release(mqtt_client_t *client)
 }
 
 
-
 /*
  * @brief  Configures mqtt DISCONNECT message structure.
  * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
@@ -439,5 +452,37 @@ size_t mqtt_disconnect(mqtt_client_t *client)
 	return message_length;
 }
 
+
+
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, uint8_t qos)
+{
+	size_t message_length = 0;
+
+	uint8_t subscribe_topic_length = 0;
+
+	subscribe_topic_length = (uint8_t)strlen(subscribe_topic);
+
+	if(client == NULL)
+	{
+		return 0;
+	}
+
+	client->subscribe_msg->fixed_header.message_type = MQTT_SUBSCRIBE_MESSAGE;
+	client->subscribe_msg->fixed_header.qos_level = qos;
+
+	client->subscribe_msg->message_identifier = mqtt_htons(0x01);
+
+	client->subscribe_msg->topic_length = mqtt_htons(subscribe_topic_length);
+
+	strncpy(client->subscribe_msg->payload, subscribe_topic, subscribe_topic_length);
+
+	client->subscribe_msg->payload[subscribe_topic_length] = qos;
+
+	message_length = FIXED_HEADER_LENGTH + 2 + 2 + subscribe_topic_length + 1;
+
+	client->subscribe_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
+
+	return message_length;
+}
 
 
