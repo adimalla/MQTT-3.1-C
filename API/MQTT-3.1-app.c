@@ -50,21 +50,29 @@
 
 #if WLAN
 
-	#if IOT_LAB
-	#define RASP_IP_ADDR "192.168.1.186"
-	#else
-	#define RASP_IP_ADDR "192.168.1.12"
-	#endif
+#if IOT_LAB
+#define RASP_IP_ADDR "192.168.1.186"
+#else
+#define RASP_IP_ADDR "192.168.1.12"
+#endif
 
 #else
 
-	#if DHCP
-	#define RASP_IP_ADDR "192.168.10.58"
-	#else
-	#define RASP_IP_ADDR "10.42.0.217"
-	#endif
+#if DHCP
+#define RASP_IP_ADDR "192.168.10.58"
+#else
+#define RASP_IP_ADDR "10.42.0.217"
+#endif
 
 #endif
+
+
+uint16_t test_htons(uint16_t value)
+{
+	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
+
+	return value;
+}
 
 
 
@@ -79,6 +87,7 @@ int main()
 
 	/* MQTT client structure initializations */
 	mqtt_client_t publisher;
+	mqtt_client_t subscriber;
 
 	/* Publisher State machine related variable initializations */
 	size_t  message_length      = 0;
@@ -123,7 +132,10 @@ int main()
 	/* State machine initializations */
 	loop_state = FSM_RUN;
 
-	mqtt_message_state = mqtt_idle_state;
+	/* Update state to connect to send connect message */
+	mqtt_message_state = mqtt_connect_state;
+
+	int count = 0;
 
 	/* MQTT Finite state machine */
 	while(loop_state)
@@ -136,8 +148,7 @@ int main()
 
 			fprintf(stdout,"FSM Idle Start\n");
 
-			/* Update state to connect to send connect message */
-			mqtt_message_state = mqtt_connect_state;
+			mqtt_message_state =  mqtt_disconnect_state;
 
 			break;
 
@@ -156,6 +167,13 @@ int main()
 				mqtt_message_state = mqtt_disconnect_state;
 			}
 
+			if(mqtt_message_state == mqtt_publish_state)
+			{
+				printf("got publish message \n");
+				mqtt_message_state = mqtt_idle_state;
+			}
+
+
 			break;
 
 
@@ -165,7 +183,7 @@ int main()
 
 			memset(message, '\0', sizeof(message));
 
-			publisher.connect_msg = (void *)&message;
+			publisher.connect_msg = (void *)message;
 
 			/* Setup User name password (optional) */
 			retval = mqtt_client_username_passwd(&publisher, user_name, pass_word);
@@ -180,7 +198,7 @@ int main()
 
 
 			/* Set connect options */
-			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, QOS_EXACTLY_ONCE, MQTT_MESSAGE_NO_RETAIN);
+			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, QOS_FIRE_FORGET, MQTT_MESSAGE_NO_RETAIN);
 			if(retval == -1)
 			{
 				fprintf(stdout,"Bad value of connect options params\n");
@@ -191,7 +209,7 @@ int main()
 			}
 
 			/* Setup mqtt CONNECT Message  */
-			message_length = mqtt_connect(&publisher, my_client_name, 60);
+			message_length = mqtt_connect(&publisher, my_client_name, 600);
 
 			/* Send mqtt CONNECT  (through socket API) */
 			retval = write(client_sfd, (char*)publisher.connect_msg, message_length);
@@ -221,7 +239,10 @@ int main()
 			/* Check return code of CONNACK message */
 			publisher.connack_msg = (void *)read_buffer;
 
-			mqtt_message_state = get_connack_status(&publisher);
+			if(count == 0)
+				mqtt_message_state = mqtt_subscribe_state;
+			else
+				mqtt_message_state = get_connack_status(&publisher);
 
 			break;
 
@@ -236,7 +257,7 @@ int main()
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_EXACTLY_ONCE);
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_FIRE_FORGET);
 			if(message_status == -1)
 			{
 				fprintf(stdout, "publish options param error\n");
@@ -266,11 +287,12 @@ int main()
 			/* Update State according to quality of service */
 			if(message_status == QOS_ATLEAST_ONCE || message_status == QOS_EXACTLY_ONCE)
 			{
-				mqtt_message_state = READ_STATE;
+				mqtt_message_state = mqtt_read_state;
 			}
 			else
 			{
 				mqtt_message_state =  mqtt_disconnect_state;
+				mqtt_message_state = mqtt_read_state;
 			}
 
 			break;
@@ -283,12 +305,13 @@ int main()
 			mqtt_message_state =  mqtt_disconnect_state;
 			//mqtt_message_state =  mqtt_publish_state;
 
+
 			break;
 
 
 		case mqtt_pubrec_state:
 
-			printf("%s :Received PUBREL\n",my_client_name);
+			printf("%s :Received PUBREC\n",my_client_name);
 
 			mqtt_message_state = mqtt_pubrel_state;
 
@@ -342,6 +365,35 @@ int main()
 			mqtt_message_state = mqtt_exit_state;
 
 			break;
+
+
+		case mqtt_subscribe_state:
+
+			memset(message,'\0',sizeof(message));
+
+			publisher.subscribe_msg = (void*)message;
+
+			message_length = mqtt_subscribe(&publisher,my_client_topic, 0);
+
+			write(client_sfd, (char*)publisher.subscribe_msg, message_length);
+
+			/* @brief print debug message */
+			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
+
+			/* Update State */
+			mqtt_message_state = mqtt_read_state;
+
+			break;
+
+
+		case mqtt_subback_state:
+
+			fprintf(stdout,"%s :Received SUBBACK\n",my_client_name);
+
+			mqtt_message_state =  mqtt_publish_state;
+
+			break;
+
 
 
 		case mqtt_exit_state:
