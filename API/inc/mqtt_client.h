@@ -367,9 +367,20 @@ size_t mqtt_disconnect(mqtt_client_t *client);
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *subscribe_topic : subscribe topic name
  * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
- * @retval size_t           : length of publish control packet, fail = 0;
+ * @retval size_t           : length of subscribe control packet, fail = 0;
  */
 size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos);
+
+
+
+/*
+ * @brief  Read MQTT PUBLISH message
+ * @param  *client           : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *subscribe_topic  : subscribe topic name received from the broker
+ * @param  *received_message : message received from topic subscribed to
+ * @retval size_t            : length of received message, fail = 0;
+ */
+size_t mqtt_read_publish(mqtt_client_t  *client, char *subscribed_topic, char *received_message);
 
 
 
