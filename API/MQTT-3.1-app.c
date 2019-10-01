@@ -89,7 +89,7 @@ int main()
 	/* MQTT client structure initializations */
 	mqtt_client_t publisher;
 	mqtt_client_t subscriber;
-
+	mqtt_client_t second;
 
 	/* Publisher State machine related variable initializations */
 	size_t  message_length      = 0;
@@ -98,8 +98,8 @@ int main()
 	uint8_t loop_state          = 0;
 	uint8_t mqtt_message_state  = 0;
 
-	uint8_t subscribe_request      = 1;  /* will be modified by another thread or interrupt routine */
-	uint8_t publish_request        = 1;  /* will be modified by another thread or interrupt routine */
+	uint8_t subscribe_request      = 0;  /* will be modified by another thread or interrupt routine */
+	uint8_t publish_request        = 0;  /* will be modified by another thread or interrupt routine */
 	uint8_t subscribe_message_send = 0;
 
 
@@ -144,6 +144,9 @@ int main()
 
 	/* Update state to connect to send connect message */
 	mqtt_message_state = mqtt_connect_state;
+
+	subscribe_request = 1;
+	publish_request   = 1;
 
 	/* MQTT Finite state machine */
 	while(loop_state)
@@ -332,11 +335,9 @@ int main()
 
 				subscriber.publish_msg = (void*)read_buffer;
 
-				received_topic_length = ntohs(subscriber.publish_msg->topic_length);
+				memset(received_topic, 0, sizeof(received_topic));
 
-				strncpy(received_topic, subscriber.publish_msg->payload, received_topic_length);
-
-				strcpy(received_message, subscriber.publish_msg->payload + received_topic_length);
+				mqtt_read_publish(&subscriber, received_topic, received_message);
 
 				/* @brief print debug message */
 				fprintf(stdout, "%s :Received PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, received_topic, strlen(received_message));
@@ -439,12 +440,25 @@ int main()
 
 			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&subscriber,"device1/#", 0);
+			message_length = mqtt_subscribe(&subscriber,"device1/#", QOS_FIRE_FORGET);
 
 			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
 			/* @brief print debug message */
 			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
+
+#if 0 /* Subscribe two topics */
+			memset(message,'\0',sizeof(message));
+
+			second.subscribe_msg = (void*)message;
+
+			message_length = mqtt_subscribe(&second,"device2/pressure", QOS_FIRE_FORGET);
+
+			write(client_sfd, (char*)second.subscribe_msg, message_length);
+
+			/* @brief print debug message */
+			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
+#endif
 
 			/* Update State */
 			mqtt_message_state = mqtt_read_state;
@@ -457,7 +471,7 @@ int main()
 
 		case mqtt_subback_state:
 
-			fprintf(stdout,"%s :Received SUBBACK\n",my_client_name);
+			fprintf(stdout,"%s :Received SUBACK\n",my_client_name);
 
 			mqtt_message_state =  mqtt_idle_state;
 
