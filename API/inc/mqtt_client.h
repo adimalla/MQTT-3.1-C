@@ -60,11 +60,17 @@
 /* MQTT Header and Connect Options */ /*TODO header and connect options should be enum */
 #define MQTT_MESSAGE_RETAIN       1               /*!< Retain mqtt message at server/broker       */ // message_retain
 #define MQTT_MESSAGE_NO_RETAIN    0               /*!< Do not retain message at server/broker     */ // message_no_retain
-#define QOS_FIRE_FORGET           0               /*!< Quality of service: at most once delivery  */
-#define QOS_ATLEAST_ONCE          1               /*!< Quality of service: at least once delivery */
-#define QOS_EXACTLY_ONCE          2               /*!< Quality of service: exactly once delivery  */
-#define QOS_RESERVED              3               /*!< Reserved bit, for future additions         */
 #define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */ // connect_clean_session
+
+typedef enum mqtt_qos
+{
+	QOS_FIRE_FORGET  = 0,
+	QOS_ATLEAST_ONCE = 1,
+	QOS_EXACTLY_ONCE = 2,
+	QOS_RESERVED     = 3
+
+}mqtt_qos_t;
+
 
 
 /* @brief Defines for CONNECT Message */
@@ -102,6 +108,7 @@
 /* Defines for MQTT SUBSRIBE message */
 #define MQTT_SUBSCRIBE_MESSAGE    8
 
+#define MQTT_SUBACK_MESSAGE       9
 
 /******************************************************************************/
 /*                                                                            */
@@ -232,6 +239,7 @@ typedef struct mqtt_client_handle
 }mqtt_client_t;
 
 
+
 /* @brief MQTT State Machine message states */
 enum mqtt_message_states
 {
@@ -247,10 +255,9 @@ enum mqtt_message_states
 	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 
 	mqtt_subscribe_state  = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state */
+	mqtt_subback_state    = MQTT_SUBACK_MESSAGE,      /*!< */
 
-	mqtt_subback_state = 9,
-
-	mqtt_exit_state       = EXIT_STATE,               /*!< State machine exit state               */
+	mqtt_exit_state       = EXIT_STATE                /*!< State machine exit state               */
 };
 
 
@@ -287,13 +294,13 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, int16_t keep_alive
 
 /*
  * @brief  Configures mqtt connect options. (qos and retain don't have any effect on control packets currently)
- * @param  *client : pointer to mqtt client structure (mqtt_client_t).
- * @param  session : configure session type
- * @param  qos     : configure quality of service
- * @param  retain  : configure mention retention at broker.
- * @retval int8_t  : 1 = Success, -1 = Error
+ * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
+ * @param  session     : configure session type
+ * @param  message_qos : configure quality of service
+ * @param  retain      : configure mention retention at broker.
+ * @retval int8_t      : 1 = Success, -1 = Error
  */
-int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos, uint8_t retain);
+int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t retain, mqtt_qos_t message_qos);
 
 
 
@@ -322,7 +329,7 @@ uint8_t get_connack_status(mqtt_client_t *client);
  * @param  message_qos    : Quality of service value (1:At-least once, 2:Exactly once)
  * @retval int8_t         : 1 = Success, -1 = Error
  */
-int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8_t message_qos);
+int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_qos_t message_qos);
 
 
 
@@ -354,7 +361,15 @@ size_t mqtt_publish_release(mqtt_client_t *client);
 size_t mqtt_disconnect(mqtt_client_t *client);
 
 
-size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, uint8_t qos);
+
+/*
+ * @brief  Configures mqtt SUBSCRIBE message structure.
+ * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *subscribe_topic : subscribe topic name
+ * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @retval size_t           : length of publish control packet, fail = 0;
+ */
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos);
 
 
 
