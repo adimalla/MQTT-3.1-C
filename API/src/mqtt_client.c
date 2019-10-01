@@ -91,6 +91,21 @@ static uint16_t mqtt_htons(uint16_t value)
 
 
 /*
+ * @brief  static function to convert from network byte order to host for mqtt packets
+ * @param  value    : value in network byte order format
+ * @retval uint16_t : value host byte order format
+ */
+static uint16_t mqtt_ntohs(uint16_t value)
+{
+	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
+
+	return value;
+}
+
+
+
+
+/*
  * @brief  Configures mqtt client user name and password.
  * @param  *client   : pointer to mqtt client structure (mqtt_client_t).
  * @param  user_name : mqtt client user name
@@ -463,7 +478,7 @@ size_t mqtt_disconnect(mqtt_client_t *client)
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *subscribe_topic : subscribe topic name
  * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
- * @retval size_t           : length of publish control packet, fail = 0;
+ * @retval size_t           : length of subscribe control packet, fail = 0;
  */
 size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos)
 {
@@ -498,6 +513,43 @@ size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t s
 		func_retval = message_length;
 
 	}
+	return func_retval;
+}
+
+
+
+/*
+ * @brief  Read MQTT PUBLISH message
+ * @param  *client           : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *subscribe_topic  : subscribe topic name received from the broker
+ * @param  *received_message : message received from topic subscribed to
+ * @retval size_t            : length of received message, fail = 0;
+ */
+size_t mqtt_read_publish(mqtt_client_t  *client, char *subscribed_topic, char *received_message)
+{
+	size_t received_message_length = 0;
+	size_t func_retval             = 0;
+	uint8_t received_topic_length  = 0;
+
+	/* Check for error*/
+	if(client == NULL || subscribed_topic == NULL || received_message == NULL)
+	{
+		func_retval = func_param_error;
+	}
+	else
+	{
+		received_topic_length = mqtt_ntohs(client->publish_msg->topic_length);
+
+		strncpy(subscribed_topic, client->publish_msg->payload, received_topic_length);
+
+		strcpy(received_message, client->publish_msg->payload + received_topic_length);
+
+		received_message_length = strlen(received_message);
+
+		func_retval = received_message_length;
+
+	}
+
 	return func_retval;
 }
 
