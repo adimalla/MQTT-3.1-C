@@ -98,14 +98,21 @@ int main()
 	uint8_t loop_state          = 0;
 	uint8_t mqtt_message_state  = 0;
 
+	uint8_t subscribe_request      = 1;  /* will be modified by another thread or interrupt routine */
+	uint8_t publish_request        = 1;  /* will be modified by another thread or interrupt routine */
+	uint8_t subscribe_message_send = 0;
+
 
 	/* MQTT message buffers */
-	char *my_client_name   = "pub|1990-adityamall";
+	char *my_client_name   = "gateway|1990-adityamall";
 	char *my_client_topic  = "device1/message";
 	char user_name[]       = "device1.sensor";
 	char pass_word[]       = "4321";
 	char *pub_message;
+	char received_topic[30];
+	char received_message[100];
 
+	uint16_t received_topic_length = 0;
 
 	/* Open client socket */
 	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
@@ -138,13 +145,6 @@ int main()
 	/* Update state to connect to send connect message */
 	mqtt_message_state = mqtt_connect_state;
 
-
-	int subscribe_request = 1;           /* will be modified by another thread or interrupt routine */
-	int publish_request = 1;             /* will be modified by another thread or interrupt routine */
-
-	int subscribe_message_send = 0;
-
-
 	/* MQTT Finite state machine */
 	while(loop_state)
 	{
@@ -163,7 +163,7 @@ int main()
 				mqtt_message_state = mqtt_subscribe_state;
 
 			else
-				mqtt_message_state = mqtt_disconnect_state;
+				mqtt_message_state = mqtt_read_state;
 
 			//else check time and change state to ping request
 
@@ -172,7 +172,12 @@ int main()
 
 		case mqtt_read_state:
 
-			/* @brief Read Message type from the socket read buffer */
+			/* Read Message type from the socket read buffer */
+
+			fprintf(stdout,"FSM Read State\n");
+
+			memset(read_buffer, 0, sizeof(read_buffer));
+
 			read(client_sfd , read_buffer, 1500);
 
 			publisher.message = (void*)read_buffer;
@@ -324,7 +329,18 @@ int main()
 			else
 			{
 				/*read publish message received from broker*/
-				printf("got publish message, not reading going to disconnect \n");
+
+				subscriber.publish_msg = (void*)read_buffer;
+
+				received_topic_length = ntohs(subscriber.publish_msg->topic_length);
+
+				strncpy(received_topic, subscriber.publish_msg->payload, received_topic_length);
+
+				strcpy(received_message, subscriber.publish_msg->payload + received_topic_length);
+
+				/* @brief print debug message */
+				fprintf(stdout, "%s :Received PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, received_topic, strlen(received_message));
+				fprintf(stdout, "%s :Received MESSAGE :%s\n", my_client_name, received_message);
 
 				subscribe_message_send = 0;
 
@@ -421,11 +437,11 @@ int main()
 
 			memset(message,'\0',sizeof(message));
 
-			publisher.subscribe_msg = (void*)message;
+			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&publisher,"device1/#", 0);
+			message_length = mqtt_subscribe(&subscriber,"device1/#", 0);
 
-			write(client_sfd, (char*)publisher.subscribe_msg, message_length);
+			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
 			/* @brief print debug message */
 			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
