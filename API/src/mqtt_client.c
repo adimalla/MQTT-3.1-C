@@ -53,7 +53,9 @@
 #define CONNECT_USER_NAME_LENGTH_SIZE  2                       /*!< */
 #define CONNECT_PASSWORD_LENGTH_SIZE   2                       /*!< */
 #define PUBLISH_TOPIC_LENGTH_SIZE      2                       /*!< */
-
+#define SUBSCRIBE_MESSAGE_ID_SIZE      2                       /*!< */
+#define SUBSCRIBE_TOPIC_LENGTH_SIZE    2
+#define SUBSCRIBE_QOS_SIZE             1
 
 /* return codes for mqtt api functions */
 enum function_return_codes
@@ -61,6 +63,7 @@ enum function_return_codes
 	func_opts_error      = -1, /*!< */
 	func_opts_success    = 1,  /*!< */
 	func_param_len_error = 0,  /*!< */
+	func_param_error     = 0,  /*!< */
 };
 
 
@@ -133,16 +136,16 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 
 /*
  * @brief  Configures mqtt connect options. (qos and retain don't have any effect on control packets currently)
- * @param  *client : pointer to mqtt client structure (mqtt_client_t).
- * @param  session : configure session type
- * @param  qos     : configure quality of service
- * @param  retain  : configure mention retention at broker.
- * @retval int8_t  : 1 = Success, -1 = Error
+ * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
+ * @param  session     : configure session type
+ * @param  message_qos : configure quality of service
+ * @param  retain      : configure mention retention at broker.
+ * @retval int8_t      : 1 = Success, -1 = Error
  */
-int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos, uint8_t retain)
+int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t retain, mqtt_qos_t message_qos)
 {
 	/* Check for correct values of session, retain and qos(quality of service) */
-	if(session > 1 || retain > 1 || qos > QOS_RESERVED)
+	if(session > 1 || retain > 1 || message_qos > QOS_RESERVED)
 	{
 		return func_opts_error;
 	}
@@ -150,15 +153,15 @@ int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t qos,
 	client->connect_msg->connect_flags.clean_session = session;
 
 	/* Enable will flag and if qos and retain are enabled by user */
-	if(qos || retain)
+	if(message_qos || retain)
 	{
-		client->connect_msg->connect_flags.will_qos    = qos;
+		client->connect_msg->connect_flags.will_qos    = message_qos;
 		client->connect_msg->connect_flags.will_retain = retain;
 		client->connect_msg->connect_flags.will_flag   = ENABLE;
 	}
 	else
 	{
-		client->connect_msg->connect_flags.will_qos    = qos;
+		client->connect_msg->connect_flags.will_qos    = message_qos;
 		client->connect_msg->connect_flags.will_retain = retain;
 		client->connect_msg->connect_flags.will_flag   = DISABLE;
 	}
@@ -311,7 +314,7 @@ uint8_t get_connack_status(mqtt_client_t *client)
  * @param  message_qos    : Quality of service value (1:At-least once, 2:Exactly once)
  * @retval int8_t         : 1 = Success, -1 = Error
  */
-int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, uint8_t message_qos)
+int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_qos_t message_qos)
 {
 	if(message_retain)
 	{
@@ -420,7 +423,7 @@ size_t mqtt_publish_release(mqtt_client_t *client)
 
 	size_t message_length = 0;
 
-	client->pubrel_msg->fixed_header.qos_level   = QOS_ATLEAST_ONCE;
+	client->pubrel_msg->fixed_header.qos_level    = QOS_ATLEAST_ONCE;
 	client->pubrel_msg->fixed_header.message_type = MQTT_PUBREL_MESSAGE;
 
 	client->pubrel_msg->message_id = mqtt_htons(1);
@@ -454,35 +457,48 @@ size_t mqtt_disconnect(mqtt_client_t *client)
 
 
 
-size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, uint8_t qos)
-{
-	size_t message_length = 0;
 
+/*
+ * @brief  Configures mqtt SUBSCRIBE message structure.
+ * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *subscribe_topic : subscribe topic name
+ * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @retval size_t           : length of publish control packet, fail = 0;
+ */
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos)
+{
+
+	size_t func_retval             = 0;
+	size_t message_length          = 0;
 	uint8_t subscribe_topic_length = 0;
 
 	subscribe_topic_length = (uint8_t)strlen(subscribe_topic);
 
-	if(client == NULL)
+	if(client == NULL || subscribe_topic == NULL)
 	{
-		return 0;
+		func_retval = func_param_error;
 	}
+	else
+	{
+		client->subscribe_msg->fixed_header.message_type = MQTT_SUBSCRIBE_MESSAGE;
+		client->subscribe_msg->fixed_header.qos_level = subscribe_qos;
 
-	client->subscribe_msg->fixed_header.message_type = MQTT_SUBSCRIBE_MESSAGE;
-	client->subscribe_msg->fixed_header.qos_level = qos;
+		client->subscribe_msg->message_identifier = mqtt_htons(0x01);
 
-	client->subscribe_msg->message_identifier = mqtt_htons(0x01);
+		client->subscribe_msg->topic_length = mqtt_htons(subscribe_topic_length);
 
-	client->subscribe_msg->topic_length = mqtt_htons(subscribe_topic_length);
+		strncpy(client->subscribe_msg->payload, subscribe_topic, subscribe_topic_length);
 
-	strncpy(client->subscribe_msg->payload, subscribe_topic, subscribe_topic_length);
+		client->subscribe_msg->payload[subscribe_topic_length] = subscribe_qos;
 
-	client->subscribe_msg->payload[subscribe_topic_length] = qos;
+		message_length = FIXED_HEADER_LENGTH + SUBSCRIBE_MESSAGE_ID_SIZE + SUBSCRIBE_TOPIC_LENGTH_SIZE + subscribe_topic_length + SUBSCRIBE_QOS_SIZE;
 
-	message_length = FIXED_HEADER_LENGTH + 2 + 2 + subscribe_topic_length + 1;
+		client->subscribe_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
 
-	client->subscribe_msg->fixed_header.message_length = message_length - FIXED_HEADER_LENGTH;
+		func_retval = message_length;
 
-	return message_length;
+	}
+	return func_retval;
 }
 
 
