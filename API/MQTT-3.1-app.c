@@ -35,6 +35,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "mqtt_client.h"
 
@@ -43,10 +44,13 @@
 
 #define PORT 1883
 
-#define LOOPBACK 0
+#define LOOPBACK 1
 #define IOT_LAB  0
 #define WLAN     0
 #define DHCP     1
+
+
+#define LOCALHOST "127.0.0.1"
 
 #if WLAN
 
@@ -67,11 +71,34 @@
 #endif
 
 
-uint16_t test_htons(uint16_t value)
+/* Function set connection to mqtt server */
+int mqtt_broker_connect(int *fd, int port, char *server_address)
 {
-	value  = ((value & 0xFF00) >> 8) + ((value & 0x00FF) << 8);
 
-	return value;
+	int func_retval = 0;
+
+	struct sockaddr_in server;
+
+	/* Get client socket type */
+	if( (*fd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
+	{
+		func_retval = -1;
+	}
+
+
+	server.sin_family = AF_INET;
+	server.sin_port   = htons(port);
+
+	server.sin_addr.s_addr = inet_addr(server_address);
+
+
+	/* Connect to MQTT server host machine */
+	if( ( connect(*fd, (struct sockaddr*)&server, sizeof(server)) ) < 0)
+	{
+		func_retval = -2;
+	}
+
+	return func_retval;
 }
 
 
@@ -83,13 +110,11 @@ int main()
 	int    client_sfd        = 0;
 	char   message[2000]     = {0};
 	char   read_buffer[1500] = {0};
-	struct sockaddr_in server_addr;
 
 
 	/* MQTT client structure initializations */
 	mqtt_client_t publisher;
 	mqtt_client_t subscriber;
-	mqtt_client_t second;
 
 	/* Publisher State machine related variable initializations */
 	size_t  message_length      = 0;
@@ -98,9 +123,10 @@ int main()
 	uint8_t loop_state          = 0;
 	uint8_t mqtt_message_state  = 0;
 
-	uint8_t subscribe_request      = 0;  /* will be modified by another thread or interrupt routine */
-	uint8_t publish_request        = 0;  /* will be modified by another thread or interrupt routine */
-	uint8_t subscribe_message_send = 0;
+	uint8_t  subscribe_request      = 0;  /* will be modified by another thread or interrupt routine */
+	uint8_t  publish_request        = 0;  /* will be modified by another thread or interrupt routine */
+	uint8_t  subscribe_message_send = 0;
+	uint16_t subscribe_message_id   = 0;
 
 
 	/* MQTT message buffers */
@@ -112,32 +138,13 @@ int main()
 	char received_topic[30];
 	char received_message[100];
 
-	uint16_t received_topic_length = 0;
 
-	/* Open client socket */
-	if( (client_sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
-	{
-		printf("Error: socket failed \n");
-		return -1;
-	}
-
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port   = htons(PORT);
-
+	/* Connect to mqtt broker */
 #if LOOPBACK
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	mqtt_broker_connect(&client_sfd, PORT, LOCALHOST);
 #else
-	server_addr.sin_addr.s_addr = inet_addr(RASP_IP_ADDR);
+	mqtt_broker_connect(&client_sfd, PORT, RASP_IP_ADDR);
 #endif
-
-
-	/* Connect to MQTT server host machine */
-	if( ( connect(client_sfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) ) < 0)
-	{
-		printf("Error: connect failed \n");
-		return -1;
-	}
-
 
 	/* State machine initializations */
 	loop_state = FSM_RUN;
@@ -147,6 +154,7 @@ int main()
 
 	subscribe_request = 1;
 	publish_request   = 1;
+
 
 	/* MQTT Finite state machine */
 	while(loop_state)
@@ -166,7 +174,9 @@ int main()
 				mqtt_message_state = mqtt_subscribe_state;
 
 			else
+			{
 				mqtt_message_state = mqtt_read_state;
+			}
 
 			//else check time and change state to ping request
 
@@ -181,7 +191,7 @@ int main()
 
 			memset(read_buffer, 0, sizeof(read_buffer));
 
-			read(client_sfd , read_buffer, 1500);
+			read(client_sfd, read_buffer, 1500);
 
 			publisher.message = (void*)read_buffer;
 
@@ -190,6 +200,16 @@ int main()
 			if(!mqtt_message_state)
 			{
 				mqtt_message_state = mqtt_disconnect_state;
+
+#if 0
+				/* connect again for subscriber time out*/
+				mqtt_broker_connect(&client_sfd, PORT, INADDR_ANY);
+
+				subscribe_request = 1;
+
+				mqtt_message_state = mqtt_connect_state;
+#endif
+
 			}
 
 			break;
@@ -198,6 +218,7 @@ int main()
 		case mqtt_connect_state:
 
 			/* Fill mqtt CONNECT message structure */
+
 
 			memset(message, '\0', sizeof(message));
 
@@ -228,7 +249,7 @@ int main()
 
 
 			/* Setup mqtt CONNECT Message  */
-			message_length = mqtt_connect(&publisher, my_client_name, 600);
+			message_length = mqtt_connect(&publisher, my_client_name, 3600);
 
 			/* Send mqtt CONNECT  (through socket API) */
 			retval = write(client_sfd, (char*)publisher.connect_msg, message_length);
@@ -348,7 +369,6 @@ int main()
 				mqtt_message_state =  mqtt_idle_state;
 
 			}
-
 			break;
 
 
@@ -440,33 +460,31 @@ int main()
 
 			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&subscriber,"device1/#", QOS_FIRE_FORGET);
+			message_length = mqtt_subscribe(&subscriber,"device1/#", QOS_FIRE_FORGET, &subscribe_message_id);
 
 			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
 			/* @brief print debug message */
 			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
 
-#if 0 /* Subscribe two topics */
+#if 1 /* Subscribe two topics */
 			memset(message,'\0',sizeof(message));
 
-			second.subscribe_msg = (void*)message;
+			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&second,"device2/pressure", QOS_FIRE_FORGET);
+			message_length = mqtt_subscribe(&subscriber,"device2/pressure", QOS_FIRE_FORGET, &subscribe_message_id);
 
-			write(client_sfd, (char*)second.subscribe_msg, message_length);
+			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
 			/* @brief print debug message */
 			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
 #endif
-
 			/* Update State */
 			mqtt_message_state = mqtt_read_state;
 
 			subscribe_message_send = 1;
 
 			break;
-
 
 
 		case mqtt_subback_state:
