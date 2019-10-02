@@ -367,9 +367,10 @@ size_t mqtt_disconnect(mqtt_client_t *client);
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *subscribe_topic : subscribe topic name
  * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @param  *message_id      : pointer to the message id variable
  * @retval size_t           : length of subscribe control packet, fail = 0;
  */
-size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos);
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos, uint16_t *message_id);
 
 
 
