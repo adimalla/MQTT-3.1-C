@@ -44,26 +44,27 @@
 
 
 /* @brief Defines for MQTT control packet Variable sizes */
-#define CONNECT_PROTOCOL_LENGTH_SIZE   2                       /*!< */
-#define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH    /*!< */
-#define CONNECT_PROTOCOL_VERSION_SIZE  1                       /*!< */
-#define CONNECT_FLAGS_SIZE             1                       /*!< */
-#define CONNECT_KEEP_ALIVE_TIME_SIZE   2                       /*!< */
-#define CONNECT_CLIENT_ID_LENGTH_SIZE  2                       /*!< */
-#define CONNECT_USER_NAME_LENGTH_SIZE  2                       /*!< */
-#define CONNECT_PASSWORD_LENGTH_SIZE   2                       /*!< */
-#define PUBLISH_TOPIC_LENGTH_SIZE      2                       /*!< */
-#define SUBSCRIBE_MESSAGE_ID_SIZE      2                       /*!< */
-#define SUBSCRIBE_TOPIC_LENGTH_SIZE    2
-#define SUBSCRIBE_QOS_SIZE             1
+#define CONNECT_PROTOCOL_LENGTH_SIZE   2                     /*!< */
+#define CONNECT_PROTOCOL_NAME_SIZE     PROTOCOL_NAME_LENGTH  /*!< */
+#define CONNECT_PROTOCOL_VERSION_SIZE  1                     /*!< */
+#define CONNECT_FLAGS_SIZE             1                     /*!< */
+#define CONNECT_KEEP_ALIVE_TIME_SIZE   2                     /*!< */
+#define CONNECT_CLIENT_ID_LENGTH_SIZE  2                     /*!< */
+#define CONNECT_USER_NAME_LENGTH_SIZE  2                     /*!< */
+#define CONNECT_PASSWORD_LENGTH_SIZE   2                     /*!< */
+#define PUBLISH_TOPIC_LENGTH_SIZE      2                     /*!< */
+#define SUBSCRIBE_MESSAGE_ID_SIZE      2                     /*!< */
+#define SUBSCRIBE_TOPIC_LENGTH_SIZE    2                     /*!< */
+#define SUBSCRIBE_QOS_SIZE             1                     /*!< */
+
 
 /* return codes for mqtt api functions */
 enum function_return_codes
 {
-	func_opts_error      = -1, /*!< */
-	func_opts_success    = 1,  /*!< */
-	func_param_len_error = 0,  /*!< */
-	func_param_error     = 0,  /*!< */
+	func_opts_error      = -1,  /*!< */
+	func_opts_success    = 1,   /*!< */
+	func_param_len_error = 0,   /*!< */
+	func_param_error     = 0,   /*!< */
 };
 
 
@@ -160,7 +161,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t retain, mqtt_qos_t message_qos)
 {
 	/* Check for correct values of session, retain and qos(quality of service) */
-	if(session > 1 || retain > 1 || message_qos > QOS_RESERVED)
+	if(session > MQTT_CLEAN_SESSION || retain > MQTT_MESSAGE_RETAIN || message_qos > QOS_RESERVED)
 	{
 		return func_opts_error;
 	}
@@ -478,9 +479,10 @@ size_t mqtt_disconnect(mqtt_client_t *client)
  * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
  * @param  *subscribe_topic : subscribe topic name
  * @param  subscribe_qos    : Quality of service value (1:At-least once, 2:Exactly once)
+ * @param  *message_id      : pointer to the message id variable
  * @retval size_t           : length of subscribe control packet, fail = 0;
  */
-size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos)
+size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos, uint16_t *message_id)
 {
 
 	size_t func_retval             = 0;
@@ -498,7 +500,9 @@ size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t s
 		client->subscribe_msg->fixed_header.message_type = MQTT_SUBSCRIBE_MESSAGE;
 		client->subscribe_msg->fixed_header.qos_level = subscribe_qos;
 
-		client->subscribe_msg->message_identifier = mqtt_htons(0x01);
+		*message_id = *message_id + 1;
+
+		client->subscribe_msg->message_identifier = mqtt_htons(*message_id);
 
 		client->subscribe_msg->topic_length = mqtt_htons(subscribe_topic_length);
 
