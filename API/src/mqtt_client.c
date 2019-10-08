@@ -557,3 +557,26 @@ size_t mqtt_read_publish(mqtt_client_t  *client, char *subscribed_topic, char *r
 }
 
 
+
+
+/*
+ * @brief  Configures mqtt PINGREQUEST message structure.
+ * @param  *client         : pointer to mqtt client structure (mqtt_client_t).
+ * @retval size_t          : Length of pingrequest message.
+ */
+size_t mqtt_pingreq(mqtt_client_t *client)
+{
+
+	size_t message_length = 0;
+
+	client->pingrequest_msg->fixed_header.message_type = MQTT_PINGREQ_MESSAGE;
+
+	message_length = sizeof(mqtt_pingreq_t);
+
+	client->pingrequest_msg->fixed_header.message_length = (uint8_t)(message_length - FIXED_HEADER_LENGTH);
+
+	return message_length;
+}
+
+
+
