@@ -36,6 +36,7 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 #include <time.h>
+#include <fcntl.h>
 
 #include "mqtt_client.h"
 
@@ -98,6 +99,8 @@ int mqtt_broker_connect(int *fd, int port, char *server_address)
 		func_retval = -2;
 	}
 
+	fcntl(*fd, F_SETFL, O_NONBLOCK);
+
 	return func_retval;
 }
 
@@ -116,6 +119,7 @@ int main()
 	mqtt_client_t publisher;
 	mqtt_client_t subscriber;
 
+
 	/* Publisher State machine related variable initializations */
 	size_t  message_length      = 0;
 	int8_t  retval              = 0;
@@ -127,6 +131,8 @@ int main()
 	uint8_t  publish_request        = 0;  /* will be modified by another thread or interrupt routine */
 	uint8_t  subscribe_message_send = 0;
 	uint16_t subscribe_message_id   = 0;
+
+	clock_t  start_time = 0;
 
 
 	/* MQTT message buffers */
@@ -191,7 +197,17 @@ int main()
 
 			memset(read_buffer, 0, sizeof(read_buffer));
 
-			read(client_sfd, read_buffer, 1500);
+			while( (( read(client_sfd, read_buffer, 1500) ) < 0) && (clock() < start_time + (5 * CLOCKS_PER_SEC)));
+
+			if(clock() > start_time + (4 * CLOCKS_PER_SEC))
+			{
+				printf("Time exceeded\n");
+				printf("Time: %ld\n", (clock() - start_time) / CLOCKS_PER_SEC);
+
+				mqtt_message_state = mqtt_pingrequest_state;
+
+				break;
+			}
 
 			publisher.message = (void*)read_buffer;
 
@@ -267,6 +283,8 @@ int main()
 
 			/* Update state */
 			mqtt_message_state = mqtt_read_state;
+
+			start_time = clock();
 
 			break;
 
@@ -453,7 +471,6 @@ int main()
 			break;
 
 
-
 		case mqtt_subscribe_state:
 
 			memset(message,'\0',sizeof(message));
@@ -477,7 +494,7 @@ int main()
 			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
 			/* @brief print debug message */
-			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
+			fprintf(stdout,"%s :Sending SUBSCRIBE 2\n",my_client_name);
 #endif
 			/* Update State */
 			mqtt_message_state = mqtt_read_state;
@@ -494,6 +511,21 @@ int main()
 			mqtt_message_state =  mqtt_idle_state;
 
 			subscribe_request = 0;
+
+			printf("delay micro sec :%ld\n", (clock()- start_time) * 1000000 / CLOCKS_PER_SEC);
+
+			break;
+
+
+		case mqtt_pingrequest_state:
+
+			fprintf(stdout,"%s :Sending PINGREQUEST\n", my_client_name);
+
+			start_time = 0;
+
+			start_time = clock();
+
+			mqtt_message_state = mqtt_read_state;
 
 			break;
 

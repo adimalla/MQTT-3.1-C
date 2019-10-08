@@ -201,7 +201,6 @@ typedef struct mqtt_pubrel
 
 
 
-
 /* MQTT disconnect structure */
 typedef struct mqtt_disconnect
 {
@@ -256,6 +255,9 @@ enum mqtt_message_states
 
 	mqtt_subscribe_state  = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state */
 	mqtt_subback_state    = MQTT_SUBACK_MESSAGE,      /*!< */
+
+	mqtt_pingrequest_state  = 12,
+	mqtt_pingresponse_state = 13,
 
 	mqtt_exit_state       = EXIT_STATE                /*!< State machine exit state               */
 };

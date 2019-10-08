@@ -436,7 +436,6 @@ size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_me
  */
 size_t mqtt_publish_release(mqtt_client_t *client)
 {
-
 	size_t message_length = 0;
 
 	client->pubrel_msg->fixed_header.qos_level    = QOS_ATLEAST_ONCE;
