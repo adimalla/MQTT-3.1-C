@@ -120,12 +120,13 @@ int main()
 	mqtt_client_t subscriber;
 
 
-	/* Publisher State machine related variable initializations */
+	/* Client State machine related variable initializations */
 	size_t  message_length      = 0;
 	int8_t  retval              = 0;
 	int8_t  message_status      = 0;
 	uint8_t loop_state          = 0;
 	uint8_t mqtt_message_state  = 0;
+	uint16_t keep_alive_time    = 0;
 
 	uint8_t  subscribe_request      = 0;  /* will be modified by another thread or interrupt routine */
 	uint8_t  publish_request        = 0;  /* will be modified by another thread or interrupt routine */
@@ -197,9 +198,9 @@ int main()
 
 			memset(read_buffer, 0, sizeof(read_buffer));
 
-			while( (( read(client_sfd, read_buffer, 1500) ) < 0) && (clock() < start_time + (5 * CLOCKS_PER_SEC)));
+			while( (( read(client_sfd, read_buffer, 1500) ) < 0) && (clock() < start_time + (keep_alive_time * CLOCKS_PER_SEC)));
 
-			if(clock() > start_time + (4 * CLOCKS_PER_SEC))
+			if(clock() > start_time + ((keep_alive_time - 1) * CLOCKS_PER_SEC))
 			{
 				printf("Time exceeded\n");
 				printf("Time: %ld\n", (clock() - start_time) / CLOCKS_PER_SEC);
@@ -235,7 +236,6 @@ int main()
 
 			/* Fill mqtt CONNECT message structure */
 
-
 			memset(message, '\0', sizeof(message));
 
 			publisher.connect_msg = (void *)message;
@@ -265,7 +265,10 @@ int main()
 
 
 			/* Setup mqtt CONNECT Message  */
-			message_length = mqtt_connect(&publisher, my_client_name, 3600);
+
+			keep_alive_time = 60;
+
+			message_length = mqtt_connect(&publisher, my_client_name, keep_alive_time);
 
 			/* Send mqtt CONNECT  (through socket API) */
 			retval = write(client_sfd, (char*)publisher.connect_msg, message_length);
@@ -519,7 +522,33 @@ int main()
 
 		case mqtt_pingrequest_state:
 
-			fprintf(stdout,"%s :Sending PINGREQUEST\n", my_client_name);
+			/* @brief Fill PINGREQ structure */
+			memset(message,'\0',sizeof(message));
+
+			publisher.pingrequest_msg = (void*)message;
+
+			message_length = mqtt_pingreq(&publisher);
+
+			/* Send Ping request Message */
+			write(client_sfd, (char*)publisher.pingrequest_msg, message_length);
+
+			/* @brief print debug message */
+			fprintf(stdout,"%s :Sending PINGREQ\n",my_client_name);
+
+			/* Change state */
+			mqtt_message_state = mqtt_read_state;
+
+			/* Reset Timer */
+			start_time = 0;
+
+			start_time = clock();
+
+			break;
+
+
+		case mqtt_pingresponse_state:
+
+			fprintf(stdout,"%s :Received PINGRESP\n", my_client_name);
 
 			start_time = 0;
 
