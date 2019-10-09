@@ -484,9 +484,9 @@ size_t mqtt_disconnect(mqtt_client_t *client)
 size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t subscribe_qos, uint16_t *message_id)
 {
 
-	size_t func_retval             = 0;
-	size_t message_length          = 0;
-	uint8_t subscribe_topic_length = 0;
+	size_t  func_retval             = 0;
+	size_t  message_length          = 0;
+	uint8_t subscribe_topic_length  = 0;
 
 	subscribe_topic_length = (uint8_t)strlen(subscribe_topic);
 
@@ -499,6 +499,7 @@ size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t s
 		client->subscribe_msg->fixed_header.message_type = MQTT_SUBSCRIBE_MESSAGE;
 		client->subscribe_msg->fixed_header.qos_level = subscribe_qos;
 
+		/* TODO Increment message id if object is same */
 		*message_id = *message_id + 1;
 
 		client->subscribe_msg->message_identifier = mqtt_htons(*message_id);
