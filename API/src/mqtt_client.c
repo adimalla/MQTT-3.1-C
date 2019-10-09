@@ -161,7 +161,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t retain, mqtt_qos_t message_qos)
 {
 	/* Check for correct values of session, retain and qos(quality of service) */
-	if(session > MQTT_CLEAN_SESSION || retain > MQTT_MESSAGE_RETAIN || message_qos > QOS_RESERVED)
+	if(session > MQTT_CLEAN_SESSION || retain > MQTT_MESSAGE_RETAIN || message_qos > MQTT_QOS_RESERVED)
 	{
 		return func_opts_error;
 	}
@@ -338,7 +338,7 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_
 	}
 
 	/* Check if Quality of service value (qos) is less than reserved value (val:3) */
-	if(message_qos < QOS_RESERVED)
+	if(message_qos < MQTT_QOS_RESERVED)
 	{
 		client->publish_msg->fixed_header.qos_level = message_qos;
 	}
@@ -438,7 +438,7 @@ size_t mqtt_publish_release(mqtt_client_t *client)
 {
 	size_t message_length = 0;
 
-	client->pubrel_msg->fixed_header.qos_level    = QOS_ATLEAST_ONCE;
+	client->pubrel_msg->fixed_header.qos_level    = MQTT_QOS_ATLEAST_ONCE;
 	client->pubrel_msg->fixed_header.message_type = MQTT_PUBREL_MESSAGE;
 
 	client->pubrel_msg->message_id = mqtt_htons(1);

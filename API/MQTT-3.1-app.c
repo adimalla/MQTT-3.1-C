@@ -46,8 +46,8 @@
 #define PORT 1883
 
 #define LOOPBACK 0
-#define IOT_LAB  0
-#define WLAN     0
+#define IOT_LAB  1
+#define WLAN     1
 #define DHCP     1
 
 
@@ -56,17 +56,17 @@
 #if WLAN
 
 #if IOT_LAB
-#define RASP_IP_ADDR "192.168.1.186"
+#define HOST_IP_ADDR "192.168.1.186"
 #else
-#define RASP_IP_ADDR "192.168.1.12"
+#define HOST_IP_ADDR "192.168.1.12"
 #endif
 
 #else
 
 #if DHCP
-#define RASP_IP_ADDR "192.168.10.58"
+#define HOST_IP_ADDR "192.168.10.58"
 #else
-#define RASP_IP_ADDR "10.42.0.217"
+#define HOST_IP_ADDR "10.42.0.217"
 #endif
 
 #endif
@@ -150,7 +150,7 @@ int main()
 #if LOOPBACK
 	mqtt_broker_connect(&client_sfd, PORT, LOCALHOST);
 #else
-	mqtt_broker_connect(&client_sfd, PORT, RASP_IP_ADDR);
+	mqtt_broker_connect(&client_sfd, PORT, HOST_IP_ADDR);
 #endif
 
 	/* State machine initializations */
@@ -254,7 +254,7 @@ int main()
 
 
 			/* Set connect options */
-			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, MQTT_MESSAGE_NO_RETAIN, QOS_FIRE_FORGET);
+			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_FIRE_FORGET);
 			if(retval == -1)
 			{
 				fprintf(stdout,"Bad value of connect options params\n");
@@ -324,7 +324,7 @@ int main()
 				publisher.publish_msg = (void *)message;
 
 				/*Configure publish options */
-				message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, QOS_FIRE_FORGET);
+				message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_FIRE_FORGET);
 				if(message_status == -1)
 				{
 					fprintf(stdout, "publish options param error\n");
@@ -352,7 +352,7 @@ int main()
 				fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
 
 				/* Update State according to quality of service */
-				if(message_status == QOS_ATLEAST_ONCE || message_status == QOS_EXACTLY_ONCE)
+				if(message_status == MQTT_QOS_ATLEAST_ONCE || message_status == MQTT_QOS_EXACTLY_ONCE)
 				{
 					mqtt_message_state = mqtt_read_state;
 				}
@@ -481,7 +481,7 @@ int main()
 
 			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&subscriber,"device1/#", QOS_FIRE_FORGET, &subscribe_message_id);
+			message_length = mqtt_subscribe(&subscriber,"device1/#", MQTT_QOS_FIRE_FORGET, &subscribe_message_id);
 
 			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
@@ -493,7 +493,7 @@ int main()
 
 			subscriber.subscribe_msg = (void*)message;
 
-			message_length = mqtt_subscribe(&subscriber,"device2/pressure", QOS_FIRE_FORGET, &subscribe_message_id);
+			message_length = mqtt_subscribe(&subscriber,"device2/pressure", MQTT_QOS_FIRE_FORGET, &subscribe_message_id);
 
 			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
 
@@ -508,7 +508,7 @@ int main()
 			break;
 
 
-		case mqtt_subback_state:
+		case mqtt_suback_state:
 
 			fprintf(stdout,"%s :Received SUBACK\n",my_client_name);
 

@@ -64,27 +64,27 @@
 
 typedef enum mqtt_qos
 {
-	QOS_FIRE_FORGET  = 0,
-	QOS_ATLEAST_ONCE = 1,
-	QOS_EXACTLY_ONCE = 2,
-	QOS_RESERVED     = 3
+	MQTT_QOS_FIRE_FORGET  = 0,
+	MQTT_QOS_ATLEAST_ONCE = 1,
+	MQTT_QOS_EXACTLY_ONCE = 2,
+	MQTT_QOS_RESERVED     = 3
 
 }mqtt_qos_t;
 
 
 
 /* @brief Defines for CONNECT Message */
-#define MQTT_CONNECT_MESSAGE      1               /*!< MQTT Connect message bit identifier value */
+#define MQTT_CONNECT_MESSAGE      1               /*!< MQTT Connect message identifier value */
 
 
 /* @brief Defines for CONNACK Message */
-#define MQTT_CONNACK_MESSAGE      2               /*!< MQTT Connack message bit identifier value */
+#define MQTT_CONNACK_MESSAGE      2               /*!< MQTT Connack message identifier value     */
 #define MQTT_CONNECTION_ACCEPTED  0               /*!< Connack message accepted identifier value */
 #define MQTT_CONNECTION_REFUSED   2               /*!< Connack message refused identifier value  */
 
 
 /* @brief Defines for PUBLISH Message */
-#define MQTT_PUBLISH_MESSAGE      3               /*!< MQTT Publish message bit identifier value                 */
+#define MQTT_PUBLISH_MESSAGE      3               /*!< MQTT Publish message identifier value                     */
 #define MQTT_TOPIC_LENGTH         TOPIC_LENGTH    /*!< Publish message topic length, mqtt_configs.h              */
 #define PUBLISH_PAYLOAD_LENGTH    MESSAGE_LENGTH  /*!< Publish message payload message length,mqtt_configs.h     */
 #define MQTT_MESSAGE_ID_OFFSET    2               /*!< Publish message, message ID length offset value           */
@@ -92,24 +92,24 @@ typedef enum mqtt_qos
 
 
 /* PUBACK, PUBREC, PUBREL, PUBCOMP */
-#define MQTT_PUBACK_MESSAGE       4               /*!< MQTT Puback message bit identifier value */
-#define MQTT_PUBREC_MESSAGE       5               /*!< MQTT Publish receive message bit identifier value  */
-#define MQTT_PUBREL_MESSAGE       6               /*!< MQTT Publish release message bit identifier value  */
-#define MQTT_PUBCOMP_MESSAGE      7               /*!< MQTT Publish complete message bit identifier value */
+#define MQTT_PUBACK_MESSAGE       4               /*!< MQTT Puback message identifier value           */
+#define MQTT_PUBREC_MESSAGE       5               /*!< MQTT Publish receive message identifier value  */
+#define MQTT_PUBREL_MESSAGE       6               /*!< MQTT Publish release message identifier value  */
+#define MQTT_PUBCOMP_MESSAGE      7               /*!< MQTT Publish complete message identifier value */
 
 
 /* @brief Defines for Disconnect */
-#define MQTT_DISCONNECT_MESSAGE   14              /*!< MQTT Publish message bit identifier value */
+#define MQTT_DISCONNECT_MESSAGE   14              /*!< MQTT Publish message identifier value   */
 
 
 /* Defines for MQTT SUBSRIBE, SUBACK message */
-#define MQTT_SUBSCRIBE_MESSAGE    8               /*!< */
-#define MQTT_SUBACK_MESSAGE       9               /*!< */
+#define MQTT_SUBSCRIBE_MESSAGE    8               /*!< MQTT Subscribe message identifier value */
+#define MQTT_SUBACK_MESSAGE       9               /*!< MQTT Suback message identifier value    */
 
 
 /* Defines for MQTT PPINGREQ and PINGRESP */
-#define MQTT_PINGREQ_MESSAGE      12              /*!< */
-#define MQTT_PINRESP_MESSAGE      13              /*!< */
+#define MQTT_PINGREQ_MESSAGE      12              /*!< MQTT Subscribe message identifier value */
+#define MQTT_PINRESP_MESSAGE      13              /*!< MQTT Suback message identifier value    */
 
 
 /******************************************************************************/
@@ -215,10 +215,10 @@ typedef struct mqtt_disconnect
 /* MQTT SUBSCRIBE structure */
 typedef struct mqtt_subscribe
 {
-	mqtt_header_t fixed_header;            /*!< */
-	uint16_t      message_identifier;      /*!< */
-	uint16_t      topic_length;            /*!< */
-	char          payload[MESSAGE_LENGTH]; /*!< */
+	mqtt_header_t fixed_header;            /*!< MQTT Fixed header            */
+	uint16_t      message_identifier;      /*!< Subscribe message identifier */
+	uint16_t      topic_length;            /*!< Subscribe topic length       */
+	char          payload[MESSAGE_LENGTH]; /*!< Subscribe message payload    */
 
 }mqtt_subscribe_t;
 
@@ -253,22 +253,24 @@ typedef struct mqtt_client_handle
 typedef enum mqtt_message_states
 {
 	mqtt_idle_state         = IDLE_STATE,               /*!< State machine Idle State               */
-	mqtt_read_state         = READ_STATE,               /*!< State machine Read State               */
+	mqtt_read_state         = READ_STATE,               /*!< State machine read State               */
+	mqtt_exit_state         = EXIT_STATE,               /*!< State machine exit state               */
+
 	mqtt_connect_state      = MQTT_CONNECT_MESSAGE,     /*!< Connect message send state             */
 	mqtt_connack_state      = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
+	mqtt_disconnect_state   = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
+
 	mqtt_publish_state      = MQTT_PUBLISH_MESSAGE,     /*!< Publish message send state             */
 	mqtt_puback_state       = MQTT_PUBACK_MESSAGE,      /*!< Puback message read state              */
 	mqtt_pubrec_state       = MQTT_PUBREC_MESSAGE,      /*!< Pubrec message read state              */
 	mqtt_pubrel_state       = MQTT_PUBREL_MESSAGE,      /*!< Pubrel message read state              */
 	mqtt_pubcomp_state      = MQTT_PUBCOMP_MESSAGE,     /*!< Pubcomp message read state             */
-	mqtt_disconnect_state   = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 
 	mqtt_subscribe_state    = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state           */
-	mqtt_subback_state      = MQTT_SUBACK_MESSAGE,      /*!< */
+	mqtt_suback_state       = MQTT_SUBACK_MESSAGE,      /*!< Suback message receive state           */
 
-	mqtt_pingrequest_state  = MQTT_PINGREQ_MESSAGE,     /*!< */
-	mqtt_pingresponse_state = MQTT_PINRESP_MESSAGE,     /*!< */
-	mqtt_exit_state         = EXIT_STATE                /*!< State machine exit state               */
+	mqtt_pingrequest_state  = MQTT_PINGREQ_MESSAGE,     /*!< Pingreq message send state             */
+	mqtt_pingresponse_state = MQTT_PINRESP_MESSAGE      /*!< Pinresponse message receive state      */
 
 }mqtt_message_states_t;
 
