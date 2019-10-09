@@ -250,27 +250,27 @@ typedef struct mqtt_client_handle
 
 
 /* @brief MQTT State Machine message states */
-enum mqtt_message_states
+typedef enum mqtt_message_states
 {
-	mqtt_idle_state       = IDLE_STATE,               /*!< State machine Idle State               */
-	mqtt_read_state       = READ_STATE,               /*!< State machine Read State               */
-	mqtt_connect_state    = MQTT_CONNECT_MESSAGE,     /*!< Connect message send state             */
-	mqtt_connack_state    = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
-	mqtt_publish_state    = MQTT_PUBLISH_MESSAGE,     /*!< Publish message send state             */
-	mqtt_puback_state     = MQTT_PUBACK_MESSAGE,      /*!< Puback message read state              */
-	mqtt_pubrec_state     = MQTT_PUBREC_MESSAGE,      /*!< Pubrec message read state              */
-	mqtt_pubrel_state     = MQTT_PUBREL_MESSAGE,      /*!< Pubrel message read state              */
-	mqtt_pubcomp_state    = MQTT_PUBCOMP_MESSAGE,     /*!< Pubcomp message read state             */
-	mqtt_disconnect_state = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
+	mqtt_idle_state         = IDLE_STATE,               /*!< State machine Idle State               */
+	mqtt_read_state         = READ_STATE,               /*!< State machine Read State               */
+	mqtt_connect_state      = MQTT_CONNECT_MESSAGE,     /*!< Connect message send state             */
+	mqtt_connack_state      = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
+	mqtt_publish_state      = MQTT_PUBLISH_MESSAGE,     /*!< Publish message send state             */
+	mqtt_puback_state       = MQTT_PUBACK_MESSAGE,      /*!< Puback message read state              */
+	mqtt_pubrec_state       = MQTT_PUBREC_MESSAGE,      /*!< Pubrec message read state              */
+	mqtt_pubrel_state       = MQTT_PUBREL_MESSAGE,      /*!< Pubrel message read state              */
+	mqtt_pubcomp_state      = MQTT_PUBCOMP_MESSAGE,     /*!< Pubcomp message read state             */
+	mqtt_disconnect_state   = MQTT_DISCONNECT_MESSAGE,  /*!< Disconnect message send state          */
 
-	mqtt_subscribe_state  = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state */
-	mqtt_subback_state    = MQTT_SUBACK_MESSAGE,      /*!< */
+	mqtt_subscribe_state    = MQTT_SUBSCRIBE_MESSAGE,   /*!< Subscribe message send state           */
+	mqtt_subback_state      = MQTT_SUBACK_MESSAGE,      /*!< */
 
-	mqtt_pingrequest_state  = MQTT_PINGREQ_MESSAGE,   /*!< */
-	mqtt_pingresponse_state = MQTT_PINRESP_MESSAGE,   /*!< */
+	mqtt_pingrequest_state  = MQTT_PINGREQ_MESSAGE,     /*!< */
+	mqtt_pingresponse_state = MQTT_PINRESP_MESSAGE,     /*!< */
+	mqtt_exit_state         = EXIT_STATE                /*!< State machine exit state               */
 
-	mqtt_exit_state       = EXIT_STATE                /*!< State machine exit state               */
-};
+}mqtt_message_states_t;
 
 
 

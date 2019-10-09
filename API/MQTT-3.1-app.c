@@ -45,7 +45,7 @@
 
 #define PORT 1883
 
-#define LOOPBACK 1
+#define LOOPBACK 0
 #define IOT_LAB  0
 #define WLAN     0
 #define DHCP     1
@@ -185,7 +185,6 @@ int main()
 				mqtt_message_state = mqtt_read_state;
 			}
 
-			//else check time and change state to ping request
 
 			break;
 
@@ -198,8 +197,10 @@ int main()
 
 			memset(read_buffer, 0, sizeof(read_buffer));
 
+			/* Check for keep alive time for subscriber */
 			while( (( read(client_sfd, read_buffer, 1500) ) < 0) && (clock() < start_time + (keep_alive_time * CLOCKS_PER_SEC)));
 
+			/* Change state to  ping request after time out */
 			if(clock() > start_time + ((keep_alive_time - 1) * CLOCKS_PER_SEC))
 			{
 				printf("Time exceeded\n");
