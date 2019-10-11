@@ -2,7 +2,7 @@
  ******************************************************************************
  * @file    MQTT-3,1-app.c
  * @author  Aditya Mall,
- * @brief   Example MQTT publish client, for mosquitto MQTT Broker
+ * @brief   Example MQTT publish - Subscribe client, for mosquitto MQTT Broker
  *
  *  Info
  *          Only for testing, (POSIX compatible only.)
