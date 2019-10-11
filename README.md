@@ -18,7 +18,7 @@ The Goal of the project is to create an MQTT client API, portable in both POSIX 
 
 ## Features
 Currently the APIs are tesed with C console applications under Linux enviornment using socket API and comes with publisher state machine example code that supports quality of service upto level 2 and message retention at MQTT broker.
-The API only supports publisher control packet methods and will include suscriber methods in future developments.
+The API only supports publisher control packet methods with qos level 2 and subscriber with qos level 0.
 
 ## Porting and Instalation
 
