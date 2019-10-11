@@ -45,9 +45,9 @@
 
 #define PORT 1883
 
-#define LOOPBACK 0
+#define LOOPBACK 1
 #define IOT_LAB  1
-#define WLAN     0
+#define WLAN     1
 #define DHCP     1
 
 
@@ -107,7 +107,7 @@ int mqtt_broker_connect(int *fd, int port, char *server_address)
 
 
 
-int main()
+int main(int argc, char **argv)
 {
 
 	/* Socket API related variable initializations */
@@ -118,8 +118,6 @@ int main()
 
 	/* MQTT client structure initializations */
 	mqtt_client_t publisher;
-	mqtt_client_t subscriber;
-
 
 	/* Client State machine related variable initializations */
 	size_t  message_length      = 0;
@@ -129,13 +127,6 @@ int main()
 	uint8_t mqtt_message_state  = 0;
 	uint16_t keep_alive_time    = 0;
 
-	uint8_t  subscribe_request      = 0;  /* will be modified by another thread or interrupt routine */
-	uint8_t  publish_request        = 0;  /* will be modified by another thread or interrupt routine */
-	uint8_t  subscribe_message_send = 0;
-	uint16_t subscribe_message_id   = 0;
-
-	clock_t  start_time = 0;
-
 
 	/* MQTT message buffers */
 	char *my_client_name   = "gateway|1990-adityamall";
@@ -143,8 +134,6 @@ int main()
 	char user_name[]       = "device1.sensor";
 	char pass_word[]       = "4321";
 	char *pub_message;
-	char received_topic[30];
-	char received_message[100];
 
 
 	/* Connect to mqtt broker */
@@ -160,9 +149,6 @@ int main()
 	/* Update state to connect to send connect message */
 	mqtt_message_state = mqtt_connect_state;
 
-	subscribe_request = 1;
-	publish_request   = 1;
-
 
 	/* MQTT Finite state machine */
 	while(loop_state)
@@ -174,18 +160,6 @@ int main()
 		case mqtt_idle_state:
 
 			fprintf(stdout,"FSM Idle State\n");
-
-			if(publish_request)
-				mqtt_message_state = mqtt_publish_state;
-
-			else if(subscribe_request)
-				mqtt_message_state = mqtt_subscribe_state;
-
-			else
-			{
-				mqtt_message_state = mqtt_read_state;
-			}
-
 
 			break;
 
@@ -199,18 +173,7 @@ int main()
 			memset(read_buffer, 0, sizeof(read_buffer));
 
 			/* Check for keep alive time for subscriber */
-			while( (( read(client_sfd, read_buffer, 1500) ) < 0) && (clock() < start_time + (keep_alive_time * CLOCKS_PER_SEC)));
-
-			/* Change state to  ping request after time out */
-			if(clock() > start_time + ((keep_alive_time - 1) * CLOCKS_PER_SEC))
-			{
-				printf("Time exceeded\n");
-				printf("Time: %ld\n", (clock() - start_time) / CLOCKS_PER_SEC);
-
-				mqtt_message_state = mqtt_pingrequest_state;
-
-				break;
-			}
+			while( ( read(client_sfd, read_buffer, 1500) ) < 0 );
 
 			publisher.message = (void*)read_buffer;
 
@@ -219,15 +182,6 @@ int main()
 			if(!mqtt_message_state)
 			{
 				mqtt_message_state = mqtt_disconnect_state;
-
-#if 0
-				/* connect again for subscriber time out*/
-				mqtt_broker_connect(&client_sfd, PORT, INADDR_ANY);
-
-				subscribe_request = 1;
-
-				mqtt_message_state = mqtt_connect_state;
-#endif
 
 			}
 
@@ -289,7 +243,6 @@ int main()
 			/* Update state */
 			mqtt_message_state = mqtt_read_state;
 
-			start_time = clock();
 
 			break;
 
@@ -302,12 +255,7 @@ int main()
 			/* Check return code of CONNACK message */
 			publisher.connack_msg = (void *)read_buffer;
 
-			if(subscribe_request == 1)
-			{
-				mqtt_message_state = mqtt_subscribe_state;
-			}
-			else
-				mqtt_message_state = get_connack_status(&publisher);
+			mqtt_message_state = get_connack_status(&publisher);
 
 			break;
 
@@ -315,83 +263,53 @@ int main()
 		case mqtt_publish_state:
 
 			/* Send publish only when requested */
-			if(publish_request == 1)
+			pub_message = "Test Message from client PC";
+
+			/* Fill mqtt PUBLISH message structure */
+			memset(message, '\0', sizeof(message));
+
+			publisher.publish_msg = (void *)message;
+
+			/*Configure publish options */
+			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_EXACTLY_ONCE);
+			if(message_status == -1)
 			{
-				pub_message = "Test Message from client PC";
+				fprintf(stdout, "publish options param error\n");
 
-				/* Fill mqtt PUBLISH message structure */
-				memset(message, '\0', sizeof(message));
+				mqtt_message_state = mqtt_disconnect_state;
 
-				publisher.publish_msg = (void *)message;
+				break;
+			}
 
-				/*Configure publish options */
-				message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_FIRE_FORGET);
-				if(message_status == -1)
-				{
-					fprintf(stdout, "publish options param error\n");
+			/* Configure publish message */
+			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
+			if(message_length == 0)
+			{
+				fprintf(stdout,"publish message param error\n");
 
-					mqtt_message_state = mqtt_disconnect_state;
+				mqtt_message_state = mqtt_disconnect_state;
 
-					break;
-				}
+				break;
+			}
 
-				/* Configure publish message */
-				message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
-				if(message_length == 0)
-				{
-					fprintf(stdout,"publish message param error\n");
+			/* @brief send publish message (Socket API) */
+			write(client_sfd, (char*)publisher.publish_msg, message_length);
 
-					mqtt_message_state = mqtt_disconnect_state;
+			/* @brief print debug message */
+			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
 
-					break;
-				}
-
-				/* @brief send publish message (Socket API) */
-				write(client_sfd, (char*)publisher.publish_msg, message_length);
-
-				/* @brief print debug message */
-				fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
-
-				/* Update State according to quality of service */
-				if(message_status == MQTT_QOS_ATLEAST_ONCE || message_status == MQTT_QOS_EXACTLY_ONCE)
-				{
-					mqtt_message_state = mqtt_read_state;
-				}
-				else
-				{
-					/* check if subscribe request has been sent just before this publish */
-					if(subscribe_message_send == 1)
-					{
-						mqtt_message_state = mqtt_read_state;
-					}
-					else
-					{
-						mqtt_message_state =  mqtt_idle_state;
-					}
-
-					/* Clear publish request after sending publish message */
-					publish_request = 0;
-				}
+			/* Update State according to quality of service */
+			if(message_status == MQTT_QOS_ATLEAST_ONCE || message_status == MQTT_QOS_EXACTLY_ONCE)
+			{
+				mqtt_message_state = mqtt_read_state;
 			}
 			else
 			{
-				/*read publish message received from broker*/
 
-				subscriber.publish_msg = (void*)read_buffer;
-
-				memset(received_topic, 0, sizeof(received_topic));
-
-				mqtt_read_publish(&subscriber, received_topic, received_message);
-
-				/* @brief print debug message */
-				fprintf(stdout, "%s :Received PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, received_topic, strlen(received_message));
-				fprintf(stdout, "%s :Received MESSAGE :%s\n", my_client_name, received_message);
-
-				subscribe_message_send = 0;
-
-				mqtt_message_state =  mqtt_idle_state;
+				mqtt_message_state =  mqtt_disconnect_state;
 
 			}
+
 			break;
 
 
@@ -400,13 +318,7 @@ int main()
 
 			printf("%s :Received PUBACK\n",my_client_name);
 
-			if(subscribe_message_send == 1)
-				mqtt_message_state = mqtt_read_state;
-			else
-				mqtt_message_state =  mqtt_disconnect_state;
-
-			publish_request = 0;
-
+			mqtt_message_state =  mqtt_disconnect_state;
 
 			break;
 
@@ -445,12 +357,7 @@ int main()
 
 			fprintf(stdout,"%s :Received PUBCOMP\n",my_client_name);
 
-			if(subscribe_message_send == 1)
-				mqtt_message_state = mqtt_read_state;
-			else
-				mqtt_message_state =  mqtt_disconnect_state;
-
-			publish_request = 0;
+			mqtt_message_state =  mqtt_disconnect_state;
 
 			break;
 
@@ -476,92 +383,6 @@ int main()
 			break;
 
 
-		case mqtt_subscribe_state:
-
-			memset(message,'\0',sizeof(message));
-
-			subscriber.subscribe_msg = (void*)message;
-
-			message_length = mqtt_subscribe(&subscriber,"device1/#", MQTT_QOS_FIRE_FORGET, &subscribe_message_id);
-
-			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
-
-			/* @brief print debug message */
-			fprintf(stdout,"%s :Sending SUBSCRIBE\n",my_client_name);
-
-#if 1 /* Subscribe two topics */
-			memset(message,'\0',sizeof(message));
-
-			subscriber.subscribe_msg = (void*)message;
-
-			message_length = mqtt_subscribe(&subscriber,"device2/pressure", MQTT_QOS_FIRE_FORGET, &subscribe_message_id);
-
-			write(client_sfd, (char*)subscriber.subscribe_msg, message_length);
-
-			/* @brief print debug message */
-			fprintf(stdout,"%s :Sending SUBSCRIBE 2\n",my_client_name);
-#endif
-			/* Update State */
-			mqtt_message_state = mqtt_read_state;
-
-			subscribe_message_send = 1;
-
-			break;
-
-
-		case mqtt_suback_state:
-
-			fprintf(stdout,"%s :Received SUBACK\n",my_client_name);
-
-			mqtt_message_state =  mqtt_idle_state;
-
-			subscribe_request = 0;
-
-			printf("delay micro sec :%ld\n", (clock()- start_time) * 1000000 / CLOCKS_PER_SEC);
-
-			break;
-
-
-		case mqtt_pingrequest_state:
-
-			/* @brief Fill PINGREQ structure */
-			memset(message,'\0',sizeof(message));
-
-			publisher.pingrequest_msg = (void*)message;
-
-			message_length = mqtt_pingreq(&publisher);
-
-			/* Send Ping request Message */
-			write(client_sfd, (char*)publisher.pingrequest_msg, message_length);
-
-			/* @brief print debug message */
-			fprintf(stdout,"%s :Sending PINGREQ\n",my_client_name);
-
-			/* Change state */
-			mqtt_message_state = mqtt_read_state;
-
-			/* Reset Timer */
-			start_time = 0;
-
-			start_time = clock();
-
-			break;
-
-
-		case mqtt_pingresponse_state:
-
-			fprintf(stdout,"%s :Received PINGRESP\n", my_client_name);
-
-			start_time = 0;
-
-			start_time = clock();
-
-			mqtt_message_state = mqtt_read_state;
-
-			break;
-
-
-
 		case mqtt_exit_state:
 
 			fprintf(stdout,"FSM Exit state \n");
@@ -572,10 +393,6 @@ int main()
 
 			/* Suspend while loop */
 			loop_state = FSM_SUSPEND;
-
-			printf("Publish request status:%d\n", publish_request);
-			printf("Subscribe request status:%d\n", subscribe_request);
-			printf("Subscribe send status:%d\n", subscribe_message_send);
 
 			break;
 
@@ -590,3 +407,5 @@ int main()
 
 	return 0;
 }
+
+
