@@ -45,7 +45,7 @@
 
 #define PORT 1883
 
-#define LOOPBACK 0
+#define LOOPBACK 1
 #define IOT_LAB  1
 #define WLAN     0
 #define DHCP     1
@@ -136,6 +136,7 @@ int main()
 
 	clock_t  start_time = 0;
 
+	uint8_t read_qos_level = 0;
 
 	/* MQTT message buffers */
 	char *my_client_name   = "gateway|1990-adityamall";
@@ -381,7 +382,7 @@ int main()
 
 				memset(received_topic, 0, sizeof(received_topic));
 
-				mqtt_read_publish(&subscriber, received_topic, received_message);
+				mqtt_read_publish(&subscriber, received_topic, received_message, &read_qos_level);
 
 				/* @brief print debug message */
 				fprintf(stdout, "%s :Received PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, received_topic, strlen(received_message));
