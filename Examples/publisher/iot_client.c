@@ -33,7 +33,7 @@
 #include <stdlib.h>
 
 
-ClientRetVal clientInit(IotClient *client)
+ClientRetVal clientBegin(IotClient *client)
 {
 	ClientRetVal errorCode = FUNC_CODE_SUCCESS;
 
@@ -46,12 +46,21 @@ ClientRetVal clientInit(IotClient *client)
 	{
 		/* Initialize members */
 		client->serverPortNumber = 0;
+		client->serverPortNumber = 0;
+		client->qualityOfService = 0;
+		client->messageRetain    = 0;
+		client->cleanSession     = 0;
+		client->returnValue      = 0;
+		client->keepAliveTime    = 0;
+		client->debugRequest     = 0;
 
+		/* Alloc Mem */
 		client->serverAddress = malloc(sizeof(char) * MAX_ADDRESS_LENGTH);
-
-		client->returnValue = FUNC_CODE_SUCCESS;
+		client->topicName     = malloc(sizeof(char) * MAX_TOPIC_LENGTH);
 
 		memset(client->serverAddress, 0, sizeof(MAX_ADDRESS_LENGTH));
+		memset(client->topicName, 0, sizeof(MAX_TOPIC_LENGTH));
+
 	}
 
 	return errorCode;
@@ -79,9 +88,6 @@ ClientRetVal checkInitializations(IotClient *client)
 			errorCode = SERVER_ADDRESS_ERROR;
 		}
 
-		/* Close client descriptor */
-		client->close(client->clientDescriptor);
-
 	}
 
 	return errorCode;
@@ -89,7 +95,8 @@ ClientRetVal checkInitializations(IotClient *client)
 
 
 
-ClientRetVal clientDeinit(IotClient *client)
+
+ClientRetVal clientEnd(IotClient *client)
 {
 	ClientRetVal errorCode = FUNC_CODE_SUCCESS;
 
@@ -102,11 +109,25 @@ ClientRetVal clientDeinit(IotClient *client)
 	{
 		/* De-initialize members */
 		client->serverPortNumber = 0;
+		client->serverPortNumber = 0;
+		client->qualityOfService = 0;
+		client->messageRetain    = 0;
+		client->cleanSession     = 0;
+		client->returnValue      = 0;
+		client->keepAliveTime    = 0;
+		client->debugRequest     = 0;
+
 
 		free(client->serverAddress);
 		client->serverAddress = NULL;
 
-		client->returnValue = ERROR_CODE_NULL;
+		free(client->topicName);
+		client->topicName = NULL;
+
+		client->returnValue = FUNC_CODE_SUCCESS;
+
+		client->close(client->socketDescriptor);
+
 	}
 
 	return errorCode;

@@ -51,7 +51,8 @@
 
 /* @brief MACRO defines */
 
-#define PORT 1883
+#define APP_VERSION         1.0
+#define DEFAULT_BROKER_PORT 1883
 
 #define LOOPBACK 1
 #define IOT_LAB  0
@@ -83,6 +84,9 @@
 
 /* Function Prototypes */
 int mqtt_broker_connect(int *fd, int port, char *server_address);
+
+int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *buffer);
+
 
 
 #endif /* MQTT_3_1_C_EXAMPLES_PUBLISHER_HEADERS_H_ */

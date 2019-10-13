@@ -31,7 +31,7 @@
 #define IOT_CLIENT_H_
 
 #include <string.h>
-
+#include "error_codes.h"
 
 /******************************************************************************/
 /*                                                                            */
@@ -42,7 +42,7 @@
 #pragma pack(1)
 
 #define MAX_ADDRESS_LENGTH  15
-
+#define MAX_TOPIC_LENGTH    30
 
 
 /******************************************************************************/
@@ -52,40 +52,39 @@
 /******************************************************************************/
 
 
-/**/
-typedef enum error_codes
-{
-	ERROR_CODE_NULL      =  0,
-	FUNC_CODE_SUCCESS    =  1,
-	CLIENT_INIT_ERROR    = -1,
-	COMMAND_NO_ARGS      = -2,
-	COMMAND_WRONG_ARGS   = -3,
-	CLIENT_DESCRP_ERROR  = -4,
-	SERVER_PORT_ERROR    = -5,
-	SERVER_ADDRESS_ERROR = -6,
-	CLIENT_DEINIT_ERROR  = -7,
 
-}ClientRetVal;
+typedef enum error_codes ClientRetVal;
 
 
 /* */
-typedef struct client
+typedef struct client IotClient;
+
+
+/* */
+struct client
 {
 	/* Members */
-	int  clientDescriptor;
+	int  socketDescriptor;
 	int  serverPortNumber;
 	char *serverAddress;
+	char *topicName;
+	int  qualityOfService;
+	int  messageRetain;
+	int  cleanSession;
+	int  keepAliveTime;
+	int  debugRequest;
 
 	ClientRetVal returnValue;
 
 	/* Methods */
 	int (*connectServer)(int *descriptor, int portNumber, char *serverAddr);
-	int (*getCommands)(int  argc, char **agrv);
+	int (*getCommands)(IotClient *clientObj, int  argc, char **agrv, char *buffer);
+	int (*info)(const void **buffer);
 	int (*write)(int descriptor, const void *buffer, size_t length);
 	int (*read)(int descriptor, void *buffer, size_t length);
 	int (*close)(int descriptor);
 
-}IotClient;
+};
 
 
 
@@ -98,11 +97,13 @@ typedef struct client
 /******************************************************************************/
 
 
-ClientRetVal clientInit(IotClient *client);
+ClientRetVal clientBegin(IotClient *client);
 
 ClientRetVal checkInitializations(IotClient *client);
 
-ClientRetVal clientDeinit(IotClient *client);
+ClientRetVal clientConnect(IotClient *client);
+
+ClientRetVal clientEnd(IotClient *client);
 
 
 

@@ -28,11 +28,13 @@
 
 
 
+/* header files */
 #include "headers.h"
 
 
 
 
+/* Main function */
 int main(int argc, char **argv)
 {
 
@@ -49,40 +51,55 @@ int main(int argc, char **argv)
 	int8_t  message_status      = 0;
 	uint8_t loop_state          = 0;
 	uint8_t mqtt_message_state  = 0;
-	uint16_t keep_alive_time    = 0;
 
 
 	/* MQTT message buffers */
-	char *my_client_name   = "gateway|1990-adityamall";
-	char *my_client_topic  = "device1/message";
+	char *my_client_name   = "Sender|1990-adityamall";
 	char user_name[]       = "device1.sensor";
 	char pass_word[]       = "4321";
-	char *pub_message;
 
+	char publish_message[100];
 
+	/* Initialize client object */
 	IotClient Publisher =
 	{
 			.connectServer = mqtt_broker_connect,
+			.getCommands   = parse_command_line_args,
 			.write         = (void*)write,
 			.read          = (void*)read,
-			.close         = close
+			.close         = close,
 	};
 
-	Publisher.returnValue = clientInit(&Publisher);
 
-	Publisher.serverPortNumber = PORT;
+	/* Initialize client handle */
+	Publisher.returnValue = clientBegin(&Publisher);
 
 
-#if LOOPBACK
-	memcpy(Publisher.serverAddress, LOCALHOST, sizeof(LOCALHOST));
-#else
-	memcpy(Publisher.serverAddress, HOST_IP_ADDR, sizeof(HOST_IP_ADDR));
-#endif
+	Publisher.returnValue = Publisher.getCommands(&Publisher, argc, argv, publish_message);
+	if(Publisher.returnValue < 0)
+	{
+		fprintf(stderr, "ERROR!!: Command Line Args Error: %d\n", Publisher.returnValue);
+		exit(EXIT_FAILURE);
+	}
+
+
 	Publisher.returnValue = checkInitializations(&Publisher);
 
 
 	/* Connect to mqtt broker */
-	Publisher.connectServer(&Publisher.clientDescriptor, Publisher.serverPortNumber, Publisher.serverAddress);
+	Publisher.returnValue = Publisher.connectServer(&Publisher.socketDescriptor, Publisher.serverPortNumber, Publisher.serverAddress);
+	if(Publisher.returnValue == CLIENT_SOCKET_ERROR)
+	{
+		printf("Socket Error \n");
+
+		exit(EXIT_FAILURE);
+	}
+	else if(Publisher.returnValue == CLIENT_CONNECT_ERROR)
+	{
+		printf("Client Connect Error\n");
+
+		exit(EXIT_FAILURE);
+	}
 
 
 	/* State machine initializations */
@@ -101,7 +118,8 @@ int main(int argc, char **argv)
 
 		case mqtt_idle_state:
 
-			fprintf(stdout,"FSM Idle State\n");
+			if(Publisher.debugRequest > 1)
+				fprintf(stdout,"FSM Idle State\n");
 
 			break;
 
@@ -110,12 +128,13 @@ int main(int argc, char **argv)
 
 			/* Read Message type from the socket read buffer */
 
-			fprintf(stdout,"FSM Read State\n");
+			if(Publisher.debugRequest > 1)
+				fprintf(stdout,"FSM Read State\n");
 
 			memset(read_buffer, 0, sizeof(read_buffer));
 
 			/* Check for keep alive time for subscriber */
-			while( ( Publisher.read(Publisher.clientDescriptor, read_buffer, 1500) ) < 0 );
+			while( ( Publisher.read(Publisher.socketDescriptor, read_buffer, 1500) ) < 0 );
 
 			publisher.message = (void*)read_buffer;
 
@@ -151,7 +170,7 @@ int main(int argc, char **argv)
 
 
 			/* Set connect options */
-			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_FIRE_FORGET);
+			retval = mqtt_connect_options(&publisher, MQTT_CLEAN_SESSION, (uint8_t)Publisher.messageRetain, (mqtt_qos_t)Publisher.qualityOfService);
 			if(retval == -1)
 			{
 				fprintf(stdout,"Bad value of connect options params\n");
@@ -164,15 +183,13 @@ int main(int argc, char **argv)
 
 			/* Setup mqtt CONNECT Message  */
 
-			keep_alive_time = 60;
-
-			message_length = mqtt_connect(&publisher, my_client_name, keep_alive_time);
+			message_length = mqtt_connect(&publisher, my_client_name, (int16_t)Publisher.keepAliveTime);
 
 			/* Send mqtt CONNECT  (through socket API) */
-			retval = Publisher.write(Publisher.clientDescriptor, (char*)publisher.connect_msg, message_length);
+			retval = Publisher.write(Publisher.socketDescriptor, (char*)publisher.connect_msg, message_length);
 			if(retval < 0)
 			{
-				printf("Connect write error, Socket closed by server \n");
+				printf("write error, Socket closed by server\n");
 
 				mqtt_message_state = mqtt_exit_state;
 
@@ -204,8 +221,6 @@ int main(int argc, char **argv)
 
 		case mqtt_publish_state:
 
-			/* Send publish only when requested */
-			pub_message = "Test Message from client PC";
 
 			/* Fill mqtt PUBLISH message structure */
 			memset(message, '\0', sizeof(message));
@@ -213,7 +228,7 @@ int main(int argc, char **argv)
 			publisher.publish_msg = (void *)message;
 
 			/*Configure publish options */
-			message_status = mqtt_publish_options(&publisher, MQTT_MESSAGE_NO_RETAIN, MQTT_QOS_EXACTLY_ONCE);
+			message_status = mqtt_publish_options(&publisher, Publisher.messageRetain, Publisher.qualityOfService);
 			if(message_status == -1)
 			{
 				fprintf(stdout, "publish options param error\n");
@@ -224,7 +239,7 @@ int main(int argc, char **argv)
 			}
 
 			/* Configure publish message */
-			message_length = mqtt_publish(&publisher, my_client_topic, pub_message);
+			message_length = mqtt_publish(&publisher, Publisher.topicName, publish_message);
 			if(message_length == 0)
 			{
 				fprintf(stdout,"publish message param error\n");
@@ -235,10 +250,10 @@ int main(int argc, char **argv)
 			}
 
 			/* @brief send publish message (Socket API) */
-			Publisher.write(Publisher.clientDescriptor, (char*)publisher.publish_msg, message_length);
+			Publisher.write(Publisher.socketDescriptor, (char*)publisher.publish_msg, message_length);
 
 			/* @brief print debug message */
-			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, my_client_topic, strlen(pub_message));
+			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, Publisher.topicName, strlen(publish_message));
 
 			/* Update State according to quality of service */
 			if(message_status == MQTT_QOS_ATLEAST_ONCE || message_status == MQTT_QOS_EXACTLY_ONCE)
@@ -286,7 +301,7 @@ int main(int argc, char **argv)
 			message_length = mqtt_publish_release(&publisher);
 
 			/* @brief send pubrel message (Socket API) */
-			Publisher.write(Publisher.clientDescriptor, (char*)publisher.pubrel_msg, message_length);
+			Publisher.write(Publisher.socketDescriptor, (char*)publisher.pubrel_msg, message_length);
 
 			fprintf(stdout,"%s :Sending PUBREL\n",my_client_name);
 
@@ -314,7 +329,7 @@ int main(int argc, char **argv)
 			message_length = mqtt_disconnect(&publisher);
 
 			/* Send Disconnect Message */
-			Publisher.write(Publisher.clientDescriptor, (char*)publisher.disconnect_msg, message_length);
+			Publisher.write(Publisher.socketDescriptor, (char*)publisher.disconnect_msg, message_length);
 
 			/* @brief print debug message */
 			fprintf(stdout,"%s :Sending DISCONNECT\n",my_client_name);
@@ -327,13 +342,14 @@ int main(int argc, char **argv)
 
 		case mqtt_exit_state:
 
-			fprintf(stdout,"FSM Exit state \n");
+			if(Publisher.debugRequest > 1)
+				fprintf(stdout,"FSM Exit state \n");
 
 			/* Suspend while loop */
 			loop_state = FSM_SUSPEND;
 
 			/* Deinit Client */
-			clientDeinit(&Publisher);
+			clientEnd(&Publisher);
 
 			break;
 
@@ -344,7 +360,8 @@ int main(int argc, char **argv)
 
 	}
 
-	fprintf(stdout,"Exited FSM \n");
+	if(Publisher.debugRequest)
+		fprintf(stdout,"Exited FSM \n");
 
 	return 0;
 }
