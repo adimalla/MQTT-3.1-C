@@ -75,6 +75,7 @@
 #define MQTT_MESSAGE_RETAIN       1               /*!< Retain mqtt message at server/broker       */ // message_retain
 #define MQTT_MESSAGE_NO_RETAIN    0               /*!< Do not retain message at server/broker     */ // message_no_retain
 #define MQTT_CLEAN_SESSION        1               /*!< Request a clean connect session            */ // connect_clean_session
+#define MQTT_MESSASE_NULL         ""              /*!< Define for NULL Message, for clearing message retain */
 
 typedef enum mqtt_qos
 {
@@ -355,7 +356,7 @@ uint8_t get_connack_status(mqtt_client_t *client);
  * @param  *client        : pointer to mqtt client structure (mqtt_client_t).
  * @param  message_retain : Enable retain for message retention at broker
  * @param  message_qos    : Quality of service value (1:At-least once, 2:Exactly once)
- * @retval int8_t         : 1 = Success, -1 = Error
+ * @retval int8_t         : qos value = Success, -1 = Error
  */
 int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_qos_t message_qos);
 
@@ -407,9 +408,10 @@ size_t mqtt_subscribe(mqtt_client_t *client, char *subscribe_topic, mqtt_qos_t s
  * @param  *client           : pointer to mqtt client structure (mqtt_client_t).
  * @param  *subscribe_topic  : subscribe topic name received from the broker
  * @param  *received_message : message received from topic subscribed to
+ * @param  *message_status   : pointer to message status.
  * @retval size_t            : length of received message, fail = 0;
  */
-size_t mqtt_read_publish(mqtt_client_t  *client, char *subscribed_topic, char *received_message);
+size_t mqtt_read_publish(mqtt_client_t  *client, char *subscribed_topic, char *received_message, uint8_t *message_status);
 
 
 
