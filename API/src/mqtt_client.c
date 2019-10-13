@@ -72,7 +72,7 @@
 #define SUBSCRIBE_QOS_SIZE             1                     /*!< */
 
 
-/* TODO correct mqtt error*/
+/* TODO correct mqtt error codes */
 /* return codes for mqtt api functions */
 typedef enum function_return_codes
 {
@@ -167,7 +167,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 }
 
 
-
+/* TODO Correct will topic error in connect message */
 /*
  * @brief  Configures mqtt connect options. (qos and retain don't have any effect on control packets currently)
  * @param  *client     : pointer to mqtt client structure (mqtt_client_t).
@@ -194,7 +194,7 @@ int8_t mqtt_connect_options(mqtt_client_t *client, uint8_t session, uint8_t reta
 		{
 			client->connect_msg->connect_flags.will_qos    = message_qos;
 			client->connect_msg->connect_flags.will_retain = retain;
-			client->connect_msg->connect_flags.will_flag   = ENABLE;
+			client->connect_msg->connect_flags.will_flag   = DISABLE;
 		}
 		else
 		{
@@ -248,7 +248,7 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, int16_t keep_alive
 		client->connect_msg->protocol_name_length = mqtt_htons(PROTOCOL_NAME_LENGTH);
 		strcpy(client->connect_msg->protocol_name, PROTOCOL_NAME);
 
-		client->connect_msg->protocol_version = PROTOCOL_VERSION;
+		client->connect_msg->protocol_version = MQTT_PROTOCOL_VERSION;
 
 		client->connect_msg->keep_alive_value = mqtt_htons(keep_alive_time);
 
