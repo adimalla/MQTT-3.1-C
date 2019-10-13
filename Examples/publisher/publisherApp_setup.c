@@ -136,6 +136,10 @@ static void errorHanlde(int errorNum)
 		fprintf(stderr,"\nError!!: Wrong Keep Alive Time value given through command line \n");
 		break;
 
+	case COMMAND_WRONG_ARGS:
+		fprintf(stderr,"\nError!!: Wrong Arguments received through command line \n");
+		break;
+
 	}
 
 	/* Print version info */
@@ -213,6 +217,8 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 	ClientRetVal func_retval = 0;
 	int index = 0;
 
+	int argumentMatch = 0;
+
 	/* Check args count */
 	if(argc < MIN_ARGS_COUNT)
 	{
@@ -226,6 +232,7 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 
 			if( (strcmp(argv[index], HOST_MACHINE_FLAG) == 0) || (strcmp(argv[index], HOST_MACHINE_FLAG_OPTNL) == 0) )
 			{
+				argumentMatch = 1;
 
 				if(argv[index + 1] == NULL)
 				{
@@ -259,6 +266,8 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			else if( (strcmp(argv[index], TOPIC_FLAG) == 0) || (strcmp(argv[index], TOPIC_FLAG_OPTNL) == 0) )
 			{
 
+				argumentMatch = 1;
+
 				if(argv[index + 1] == NULL)
 				{
 
@@ -290,6 +299,8 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			}
 			else if( (strcmp(argv[index], QOS_FLAG) == 0) || (strcmp(argv[index], QOS_FLAG_OPTNL) == 0) )
 			{
+
+				argumentMatch = 1;
 
 				if(argv[index + 1] == NULL)
 				{
@@ -331,12 +342,16 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			else if( (strcmp(argv[index], RETAIN_FLAG) == 0) || (strcmp(argv[index], RETAIN_FLAG_OPTNL) == 0) )
 			{
 
+				argumentMatch = 1;
+
 				clientObj->messageRetain = 1;
 
 
 			}
 			else if( (strcmp(argv[index], MESSAGE_FLAG) == 0) )
 			{
+
+				argumentMatch = 1;
 
 				if(argv[index + 1] == NULL)
 				{
@@ -365,6 +380,8 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			else if( (strcmp(argv[index], HELP_FLAG) == 0) )
 			{
 
+				argumentMatch = 1;
+
 				func_retval = HELP_REQUEST;
 
 				help_info(argv);
@@ -373,16 +390,22 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			}
 			else if( (strcmp(argv[index], DEBUG_FLAG) == 0))
 			{
+				argumentMatch = 1;
+
 				clientObj->debugRequest = 1;
 
 			}
 			else if ( (strcmp(argv[index], DEBUG_ALL_FLAG) == 0) )
 			{
+				argumentMatch = 1;
+
 				clientObj->debugRequest = 2;
 
 			}
 			else if( (strcmp(argv[index], KEEP_ALIVE_FLAG) == 0))
 			{
+
+				argumentMatch = 1;
 
 				if(argv[index + 1] == NULL)
 				{
@@ -417,6 +440,8 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 			}
 			else if( (strcmp(argv[index], PORT_FLAG) == 0) || (strcmp(argv[index], PORT_FLAG_OPTNL) == 0))
 			{
+
+				argumentMatch = 1;
 
 				if(argv[index + 1] == NULL)
 				{
@@ -475,6 +500,10 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 
 
 	/* Handle Error */
+
+	if(argumentMatch == 0)
+		func_retval = COMMAND_WRONG_ARGS;
+
 	if(func_retval != FUNC_CODE_SUCCESS)
 	{
 		errorHanlde(func_retval);
