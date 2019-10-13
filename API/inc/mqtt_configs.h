@@ -55,15 +55,15 @@
 
 
 /* @brief MQTT defines */
-#define FIXED_HEADER_LENGTH   2         /*!< Size of MQTT Fixed Header                                    */
-#define PROTOCOL_NAME_LENGTH  6         /*!< Size of MQTT Protocol                                        */
-#define PROTOCOL_NAME         "MQIsdp"  /*!< MQTT Protocol name                                           */
-#define PROTOCOL_VERSION      3         /*!< MQTT Protocol version                                        */
-#define CLIENT_ID_LENGTH      23        /*!< MQTT client ID, fixed by mosquitto broker, do not change!    */
-#define USER_NAME_LENGTH      15        /*!< MQTT username size, variable can be changed by user          */
-#define PASSWORD_LENGTH       10        /*!< MQTT passwords size, variable can be changed by user         */
-#define TOPIC_LENGTH          30        /*!< MQTT topic length size, variable can be changed by user      */
-#define MESSAGE_LENGTH        100       /*!< MQTT message/payload length, variable can be changed by user */
-
+#define FIXED_HEADER_LENGTH     2         /*!< Size of MQTT Fixed Header                                    */
+#define PROTOCOL_NAME_LENGTH    6         /*!< Size of MQTT Protocol                                        */
+#define PROTOCOL_NAME           "MQIsdp"  /*!< MQTT Protocol name                                           */
+#define MQTT_PROTOCOL_VERSION   3         /*!< MQTT Protocol version                                        */
+#define CLIENT_ID_LENGTH        23        /*!< MQTT client ID, fixed by mosquitto broker, do not change!    */
+#define USER_NAME_LENGTH        15        /*!< MQTT username size, variable can be changed by user          */
+#define PASSWORD_LENGTH         10        /*!< MQTT passwords size, variable can be changed by user         */
+#define TOPIC_LENGTH            30        /*!< MQTT topic length size, variable can be changed by user      */
+#define MESSAGE_LENGTH          100       /*!< MQTT message/payload length, variable can be changed by user */
+#define MQTT_DEFAULT_KEEPALIVE  60
 
 #endif /* INC_MQTT_CONFIGS_H_ */

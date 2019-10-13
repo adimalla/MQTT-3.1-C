@@ -58,6 +58,9 @@
 /*                                                                            */
 /******************************************************************************/
 
+/*MQTT API Version and Info Defines */
+#define MQTT_API_VERSION  1.0
+#define MQTT_VERSION      MQTT_PROTOCOL_VERSION
 
 /* Avoid Structure padding */
 #pragma pack(1)
