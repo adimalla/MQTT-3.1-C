@@ -52,7 +52,7 @@ enum error_codes
 	HELP_REQUEST         = -15,
 	NO_TOPIC_NAME        = -16,
 	KEEP_ALIVE_ERROR     = -17,
-	BROKER_PORT_ERROR    = -18
+	BROKER_PORT_ERROR    = -18,
 
 };
 

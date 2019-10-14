@@ -33,7 +33,6 @@
 
 
 
-
 /* Main function */
 int main(int argc, char **argv)
 {
@@ -65,8 +64,8 @@ int main(int argc, char **argv)
 	{
 			.connectServer = mqtt_broker_connect,
 			.getCommands   = parse_command_line_args,
-			.write         = (void*)write,
-			.read          = (void*)read,
+			.write         = write,
+			.read          = read,
 			.close         = close,
 	};
 
@@ -75,6 +74,7 @@ int main(int argc, char **argv)
 	Publisher.returnValue = clientBegin(&Publisher);
 
 
+	/* Get Input from user */
 	Publisher.returnValue = Publisher.getCommands(&Publisher, argc, argv, publish_message);
 	if(Publisher.returnValue < 0)
 	{
@@ -83,27 +83,18 @@ int main(int argc, char **argv)
 	}
 
 
-	Publisher.returnValue = checkInitializations(&Publisher);
-
-
-	/* Connect to mqtt broker */
-	Publisher.returnValue = Publisher.connectServer(&Publisher.socketDescriptor, Publisher.serverPortNumber, Publisher.serverAddress);
-	if(Publisher.returnValue == CLIENT_SOCKET_ERROR)
+	/* Connect to MQTT broker */
+	Publisher.returnValue = clientConnect(&Publisher);
+	if(Publisher.returnValue < 0)
 	{
-		printf("Socket Error \n");
-
-		exit(EXIT_FAILURE);
-	}
-	else if(Publisher.returnValue == CLIENT_CONNECT_ERROR)
-	{
-		printf("Client Connect Error\n");
-
+		fprintf(stderr, "ERROR!!: Client Connect Error: %d\n", Publisher.returnValue);
 		exit(EXIT_FAILURE);
 	}
 
 
 	/* State machine initializations */
 	loop_state = FSM_RUN;
+
 
 	/* Update state to connect to send connect message */
 	mqtt_message_state = mqtt_connect_state;
@@ -126,7 +117,7 @@ int main(int argc, char **argv)
 
 		case mqtt_read_state:
 
-			/* Read Message type from the socket read buffer */
+			/* Read Message type from the socket read buffer (Non Blocking) */
 
 			if(Publisher.debugRequest > 1)
 				fprintf(stdout,"FSM Read State\n");
@@ -181,11 +172,10 @@ int main(int argc, char **argv)
 			}
 
 
-			/* Setup mqtt CONNECT Message  */
+			/* Setup MQTT CONNECT Message  */
 
 			message_length = mqtt_connect(&publisher, my_client_name, (int16_t)Publisher.keepAliveTime);
 
-			/* Send mqtt CONNECT  (through socket API) */
 			retval = Publisher.write(Publisher.socketDescriptor, (char*)publisher.connect_msg, message_length);
 			if(retval < 0)
 			{
@@ -197,7 +187,8 @@ int main(int argc, char **argv)
 			}
 
 			/* Print debug message */
-			fprintf(stdout, "%s :Sending CONNECT\n", my_client_name);
+			if(Publisher.debugRequest > 0)
+				fprintf(stdout, "%s :Sending CONNECT\n", my_client_name);
 
 			/* Update state */
 			mqtt_message_state = mqtt_read_state;
@@ -209,7 +200,8 @@ int main(int argc, char **argv)
 		case mqtt_connack_state:
 
 			/* @brief print debug message */
-			fprintf(stdout,"%s :Received CONNACK\n", my_client_name);
+			if(Publisher.debugRequest > 0)
+				fprintf(stdout,"%s :Received CONNACK\n", my_client_name);
 
 			/* Check return code of CONNACK message */
 			publisher.connack_msg = (void *)read_buffer;
@@ -249,11 +241,11 @@ int main(int argc, char **argv)
 				break;
 			}
 
-			/* @brief send publish message (Socket API) */
 			Publisher.write(Publisher.socketDescriptor, (char*)publisher.publish_msg, message_length);
 
-			/* @brief print debug message */
-			fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, Publisher.topicName, strlen(publish_message));
+			/* print debug message */
+			if(Publisher.debugRequest > 0)
+				fprintf(stdout, "%s :Sending PUBLISH(\"%s\",...(%ld bytes))\n", my_client_name, Publisher.topicName, strlen(publish_message));
 
 			/* Update State according to quality of service */
 			if(message_status == MQTT_QOS_ATLEAST_ONCE || message_status == MQTT_QOS_EXACTLY_ONCE)
@@ -262,9 +254,7 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-
 				mqtt_message_state =  mqtt_disconnect_state;
-
 			}
 
 			break;
@@ -273,7 +263,8 @@ int main(int argc, char **argv)
 
 		case mqtt_puback_state:
 
-			printf("%s :Received PUBACK\n",my_client_name);
+			if(Publisher.debugRequest > 0)
+				printf("%s :Received PUBACK\n",my_client_name);
 
 			mqtt_message_state =  mqtt_disconnect_state;
 
@@ -283,7 +274,8 @@ int main(int argc, char **argv)
 
 		case mqtt_pubrec_state:
 
-			printf("%s :Received PUBREC\n",my_client_name);
+			if(Publisher.debugRequest > 0)
+				printf("%s :Received PUBREC\n",my_client_name);
 
 			mqtt_message_state = mqtt_pubrel_state;
 
@@ -293,17 +285,18 @@ int main(int argc, char **argv)
 
 		case mqtt_pubrel_state:
 
-			/* Fill mqtt PUBREL message strcuture */
+			/* Fill MQTT PUBREL message structure */
 			memset(message, '\0', sizeof(message));
 
 			publisher.pubrel_msg = (void *)message;
 
 			message_length = mqtt_publish_release(&publisher);
 
-			/* @brief send pubrel message (Socket API) */
+			/* Send PUBREL message (Socket API) */
 			Publisher.write(Publisher.socketDescriptor, (char*)publisher.pubrel_msg, message_length);
 
-			fprintf(stdout,"%s :Sending PUBREL\n",my_client_name);
+			if(Publisher.debugRequest > 0)
+				fprintf(stdout,"%s :Sending PUBREL\n",my_client_name);
 
 			mqtt_message_state = mqtt_read_state;
 
@@ -312,7 +305,8 @@ int main(int argc, char **argv)
 
 		case mqtt_pubcomp_state:
 
-			fprintf(stdout,"%s :Received PUBCOMP\n",my_client_name);
+			if(Publisher.debugRequest > 0)
+				fprintf(stdout,"%s :Received PUBCOMP\n",my_client_name);
 
 			mqtt_message_state =  mqtt_disconnect_state;
 
@@ -321,7 +315,7 @@ int main(int argc, char **argv)
 
 		case mqtt_disconnect_state:
 
-			/* @brief Fill DISCONNECT structure */
+			/* Fill DISCONNECT structure */
 			memset(message,'\0',sizeof(message));
 
 			publisher.disconnect_msg = (void*)message;
@@ -331,8 +325,9 @@ int main(int argc, char **argv)
 			/* Send Disconnect Message */
 			Publisher.write(Publisher.socketDescriptor, (char*)publisher.disconnect_msg, message_length);
 
-			/* @brief print debug message */
-			fprintf(stdout,"%s :Sending DISCONNECT\n",my_client_name);
+			/* brief print debug message */
+			if(Publisher.debugRequest == 1)
+				fprintf(stdout,"%s :Sending DISCONNECT\n",my_client_name);
 
 			/* Update State */
 			mqtt_message_state = mqtt_exit_state;
