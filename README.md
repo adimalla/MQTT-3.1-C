@@ -28,6 +28,8 @@ You can test the publisher client from the Examples Directory, execution flags a
 ### Linux
 Currently there are no instalation scripts, however, in development code is available in API directory.
 
+run make in Examples/publisher directory to test mqtt_publish client application
+
 ### Windows
 NA
 
