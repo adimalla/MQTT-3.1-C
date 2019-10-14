@@ -28,16 +28,19 @@
 
 
 /* header files */
-#include "iot_client.h"
-#include <string.h>
 #include <stdlib.h>
+#include "iot_client.h"
 
-
+/*
+ * @brief  Initializes Client structure members
+ * @param  IotClient : pointer to IOT client structure
+ * @retval int8_t    : 1 = Success, -1 = Error
+ */
 ClientRetVal clientBegin(IotClient *client)
 {
-	ClientRetVal errorCode = FUNC_CODE_SUCCESS;
+	ClientRetVal errorCode = 0;
 
-	/* Check param error */
+	/* Check function parameters */
 	if(client == NULL)
 	{
 		errorCode = CLIENT_INIT_ERROR;
@@ -54,13 +57,15 @@ ClientRetVal clientBegin(IotClient *client)
 		client->keepAliveTime    = 0;
 		client->debugRequest     = 0;
 
-		/* Alloc Mem */
+		/* Allocate Memory */
 		client->serverAddress = malloc(sizeof(char) * MAX_ADDRESS_LENGTH);
 		client->topicName     = malloc(sizeof(char) * MAX_TOPIC_LENGTH);
 
 		memset(client->serverAddress, 0, sizeof(MAX_ADDRESS_LENGTH));
 		memset(client->topicName, 0, sizeof(MAX_TOPIC_LENGTH));
 
+		errorCode = FUNC_CODE_SUCCESS;
+
 	}
 
 	return errorCode;
@@ -68,37 +73,42 @@ ClientRetVal clientBegin(IotClient *client)
 
 
 
-ClientRetVal checkInitializations(IotClient *client)
-{
-	ClientRetVal errorCode = FUNC_CODE_SUCCESS;
 
-	/* Check param error */
+
+/*
+ * @brief  Connects to Messaging Server
+ * @param  IotClient : pointer to IOT client structure
+ * @retval int8_t    : 1 = Success, -1 = Error
+ */
+ClientRetVal clientConnect(IotClient *client)
+{
+	ClientRetVal errorCode = 0;
+
 	if(client == NULL)
 	{
-		errorCode = CLIENT_INIT_ERROR;
+		errorCode = CLIENT_SOCKET_ERROR;
 	}
 	else
 	{
-		/* Check of structure member values */
-		if(client->serverPortNumber <= 0)
-			errorCode = SERVER_PORT_ERROR;
+		errorCode = client->connectServer(&client->socketDescriptor, client->serverPortNumber, client->serverAddress);
 
-		else if( strlen(client->serverAddress) > MAX_ADDRESS_LENGTH)
-		{
-			errorCode = SERVER_ADDRESS_ERROR;
-		}
+		errorCode = FUNC_CODE_SUCCESS;
 
 	}
-
 	return errorCode;
 }
 
 
 
 
+/*
+ * @brief  De-initializes Client structure members
+ * @param  IotClient : pointer to IOT client structure
+ * @retval int8_t    : 1 = Success, -1 = Error
+ */
 ClientRetVal clientEnd(IotClient *client)
 {
-	ClientRetVal errorCode = FUNC_CODE_SUCCESS;
+	ClientRetVal errorCode = 0;
 
 	/* Check param error */
 	if(client == NULL)
@@ -116,7 +126,6 @@ ClientRetVal clientEnd(IotClient *client)
 		client->returnValue      = 0;
 		client->keepAliveTime    = 0;
 		client->debugRequest     = 0;
-
 
 		free(client->serverAddress);
 		client->serverAddress = NULL;

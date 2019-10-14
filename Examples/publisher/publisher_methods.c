@@ -53,58 +53,13 @@
 
 
 
+/* Static Prototypes */
+static void versionInfo(void);
+static void errorHanlde(int errorNum);
+static int help_info(char **argv);
+
+
 /* Function Definitions */
-
-
-
-int mqtt_broker_connect(int *fd, int port, char *server_address)
-{
-
-	int func_retval = 0;
-
-	struct sockaddr_in server;
-
-	/* Get client socket type */
-	if( (*fd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
-	{
-		func_retval = CLIENT_SOCKET_ERROR;
-	}
-	else
-	{
-		server.sin_family = AF_INET;
-		server.sin_port   = htons(port);
-
-		server.sin_addr.s_addr = inet_addr(server_address);
-
-		/* Connect to MQTT server host machine */
-		if( ( connect(*fd, (struct sockaddr*)&server, sizeof(server)) ) < 0)
-		{
-			func_retval = CLIENT_CONNECT_ERROR;
-		}
-		else
-		{
-			fcntl(*fd, F_SETFL, O_NONBLOCK);
-
-			func_retval = FUNC_CODE_SUCCESS;
-		}
-	}
-
-	return func_retval;
-}
-
-
-
-
-static void versionInfo()
-{
-	printf("\n");
-	printf("MQTT Publisher Application Version : %lf \n", APP_VERSION);
-	printf("MQTT API Version                   : %lf \n", MQTT_API_VERSION);
-	printf("MQTT Protocol Version              : %d \n", MQTT_PROTOCOL_VERSION);
-	printf("\n");
-}
-
-
 static void errorHanlde(int errorNum)
 {
 
@@ -147,6 +102,57 @@ static void errorHanlde(int errorNum)
 
 }
 
+
+
+
+int mqtt_broker_connect(int *fd, int port, char *server_address)
+{
+
+	int func_retval = 0;
+
+	struct sockaddr_in server;
+
+	/* Get client socket type */
+	if( (*fd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
+	{
+		func_retval = CLIENT_SOCKET_ERROR;
+	}
+	else
+	{
+		server.sin_family = AF_INET;
+		server.sin_port   = htons(port);
+
+		server.sin_addr.s_addr = inet_addr(server_address);
+
+		/* Connect to MQTT server host machine */
+		if( ( connect(*fd, (struct sockaddr*)&server, sizeof(server)) ) < 0)
+		{
+			func_retval = CLIENT_CONNECT_ERROR;
+		}
+		else
+		{
+			fcntl(*fd, F_SETFL, O_NONBLOCK);
+
+			func_retval = FUNC_CODE_SUCCESS;
+		}
+	}
+
+	return func_retval;
+}
+
+
+
+
+
+
+static void versionInfo(void)
+{
+	printf("\n");
+	printf("MQTT Publisher Application Version : %lf \n", APP_VERSION);
+	printf("MQTT API Version                   : %lf \n", MQTT_API_VERSION);
+	printf("MQTT Protocol Version              : %d \n", MQTT_PROTOCOL_VERSION);
+	printf("\n");
+}
 
 
 
@@ -199,7 +205,6 @@ static int help_info(char **argv)
 
 
 
-
 static int args_check(int index, char **argv)
 {
 	int i = index;
@@ -210,6 +215,8 @@ static int args_check(int index, char **argv)
 			strcmp(argv[i+1], PORT_FLAG_OPTNL) && strcmp(argv[i+1], PORT_FLAG) && strcmp(argv[i+1], DEBUG_FLAG) && strcmp(argv[i+1], DEBUG_ALL_FLAG) && \
 			strcmp(argv[i+1], MESSAGE_FLAG) && strcmp(argv[i+1], KEEP_ALIVE_FLAG));
 }
+
+
 
 
 int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *buffer)
@@ -394,12 +401,28 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 
 				clientObj->debugRequest = 1;
 
+				if(argv[index + 1] == NULL)
+				{
+
+					func_retval = COMMAND_NO_ARGS;
+
+					break;
+				}
+
 			}
 			else if ( (strcmp(argv[index], DEBUG_ALL_FLAG) == 0) )
 			{
 				argumentMatch = 1;
 
 				clientObj->debugRequest = 2;
+
+				if(argv[index + 1] == NULL)
+				{
+
+					func_retval = COMMAND_NO_ARGS;
+
+					break;
+				}
 
 			}
 			else if( (strcmp(argv[index], KEEP_ALIVE_FLAG) == 0))
@@ -474,9 +497,7 @@ int parse_command_line_args(IotClient *clientObj, int argc, char **argv, char *b
 					}
 				}
 			}
-#if 0
-			printf("args[%d]: %s\n", index, argv[index]);
-#endif
+
 		}/* Loop */
 
 	}/* Else Condition */

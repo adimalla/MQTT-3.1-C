@@ -30,8 +30,10 @@
 #ifndef IOT_CLIENT_H_
 #define IOT_CLIENT_H_
 
+#include <stdio.h>
 #include <string.h>
 #include "error_codes.h"
+
 
 /******************************************************************************/
 /*                                                                            */
@@ -52,16 +54,13 @@
 /******************************************************************************/
 
 
-
+/* Typedef to error codes strcuture */
 typedef enum error_codes ClientRetVal;
 
 
-/* */
-typedef struct client IotClient;
 
-
-/* */
-struct client
+/* Client Structure */
+typedef struct client
 {
 	/* Members */
 	int  socketDescriptor;
@@ -77,14 +76,14 @@ struct client
 	ClientRetVal returnValue;
 
 	/* Methods */
-	int (*connectServer)(int *descriptor, int portNumber, char *serverAddr);
-	int (*getCommands)(IotClient *clientObj, int  argc, char **agrv, char *buffer);
-	int (*info)(const void **buffer);
-	int (*write)(int descriptor, const void *buffer, size_t length);
-	int (*read)(int descriptor, void *buffer, size_t length);
-	int (*close)(int descriptor);
+	int     (*getCommands)(struct client *clientObj, int  argc, char **agrv, char *buffer);
+	int     (*connectServer)(int *descriptor, int portNumber, char *serverAddr);
 
-};
+	ssize_t (*write)(int descriptor, const void *buffer, size_t length);
+	ssize_t (*read)(int descriptor, void *buffer, size_t length);
+	int     (*close)(int descriptor);
+
+}IotClient;
 
 
 
@@ -98,8 +97,6 @@ struct client
 
 
 ClientRetVal clientBegin(IotClient *client);
-
-ClientRetVal checkInitializations(IotClient *client);
 
 ClientRetVal clientConnect(IotClient *client);
 
