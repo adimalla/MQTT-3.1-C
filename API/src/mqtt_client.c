@@ -44,9 +44,9 @@
 /*
  * Standard Header and API Header files
  */
+#include <mqtt_client.h>
 #include <stdint.h>
 #include <string.h>
-#include "mqtt_client.h"
 
 
 
@@ -78,7 +78,6 @@ typedef enum function_return_codes
 {
 	FUNC_OPTS_ERROR       = -1,  /*!< */
 	FUNC_OPTS_SUCCESS     = 1,   /*!< */
-	MAIN_MAIN_FUNC_ERROR  = 0,   /*!< */
 	MAIN_FUNC_ERROR       = 0    /*!< */
 
 }return_codes_t;
@@ -137,7 +136,7 @@ int8_t mqtt_client_username_passwd(mqtt_client_t *client, char *user_name, char 
 	int8_t  func_retval      = 0;
 
 	user_name_length = strlen(user_name);
-	password_length = strlen(password);
+	password_length  = strlen(password);
 
 	/* check if user name is not null */
 	if( client == NULL || user_name == NULL  || password == NULL)
@@ -228,10 +227,10 @@ size_t mqtt_connect(mqtt_client_t *client, char *client_name, int16_t keep_alive
 
 	size_t func_retval;
 
-	/* TODO Implement error checks in mqtt connect */
+	/* TODO Implement error checks in MQTT connect */
 	if(keep_alive_time < 0 || client_name == NULL || client == NULL)
 	{
-		func_retval = (size_t)MAIN_MAIN_FUNC_ERROR;
+		func_retval = (size_t)MAIN_FUNC_ERROR;
 	}
 	else
 	{
@@ -330,19 +329,19 @@ uint8_t get_mqtt_message_type(mqtt_client_t *client)
  */
 uint8_t get_connack_status(mqtt_client_t *client)
 {
-	uint8_t message_state;
+	uint8_t func_retval = 0;
 
 	/* If connection accepted then publish message */
 	if(client->connack_msg->return_code == MQTT_CONNECTION_ACCEPTED)
 	{
-		message_state = MQTT_PUBLISH_MESSAGE;
+	    func_retval = MQTT_CONNECTION_ACCEPTED;
 	}
 	else
 	{
-		message_state = MQTT_DISCONNECT_MESSAGE;
+	    func_retval = MQTT_DISCONNECT_MESSAGE;
 	}
 
-	return message_state;
+	return func_retval;
 }
 
 
@@ -378,38 +377,31 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_
 
 /*
  * @brief  Configures mqtt PUBLISH message structure.
- * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
- * @param  *publish_topic   : publish topic name
- * @param  *publish_message : message to be published
- * @retval size_t           : length of publish control packet, fail = 0;
+ * @param  *client                : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *publish_topic         : publish topic name
+ * @param  *publish_message       : message to be published
+ * @param  publish_message_length : length of publish message
+ * @retval size_t                 : length of publish control packet, fail = 0;
  */
-size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message)
+size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message, uint16_t publish_message_length)
 {
 
 	uint8_t message_length         = 0;
 	uint8_t publish_topic_length   = 0;
-	uint8_t publish_message_length = 0;
 	uint8_t payload_index          = 0;
 
-
 	publish_topic_length = strlen(publish_topic);
-
 
 	/*Check if quality of service is > 0 and accordingly adjust the length of publish message */
 	if(client->publish_msg->fixed_header.qos_level > 0)
 	{
-		publish_message_length = strlen(publish_message) + MQTT_MESSAGE_ID_OFFSET;
+		publish_message_length = MQTT_MESSAGE_ID_OFFSET;
 	}
-	else
-	{
-		publish_message_length = strlen(publish_message);
-	}
-
 
 	/* Check for overflow condition, if topic and message length is not greater than specified length */
 	if(publish_topic_length > MQTT_TOPIC_LENGTH || publish_message_length > PUBLISH_PAYLOAD_LENGTH)
 	{
-		return MAIN_MAIN_FUNC_ERROR;
+		return MAIN_FUNC_ERROR;
 	}
 
 	/* Fill main publish structure */
