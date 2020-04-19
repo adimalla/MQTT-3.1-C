@@ -49,6 +49,7 @@
  * Standard Header and API Header files
  */
 #include <stdint.h>
+#include <stdlib.h>
 #include "mqtt_configs.h"
 
 
@@ -273,6 +274,7 @@ typedef enum mqtt_message_states
 	mqtt_idle_state         = IDLE_STATE,               /*!< State machine Idle State               */
 	mqtt_read_state         = READ_STATE,               /*!< State machine read State               */
 	mqtt_exit_state         = EXIT_STATE,               /*!< State machine exit state               */
+	mqtt_message_read_state = 19,
 
 	mqtt_connect_state      = MQTT_CONNECT_MESSAGE,     /*!< Connect message send state             */
 	mqtt_connack_state      = MQTT_CONNACK_MESSAGE,     /*!< Connack message return code read state */
@@ -367,12 +369,13 @@ int8_t mqtt_publish_options(mqtt_client_t *client, uint8_t message_retain, mqtt_
 
 /*
  * @brief  Configures mqtt PUBLISH message structure.
- * @param  *client          : pointer to mqtt client structure (mqtt_client_t).
- * @param  *publish_topic   : publish topic name
- * @param  *publish_message : message to be published
- * @retval size_t           : length of publish control packet.
+ * @param  *client                : pointer to mqtt client structure (mqtt_client_t).
+ * @param  *publish_topic         : publish topic name
+ * @param  *publish_message       : message to be published
+ * @param  publish_message_length : length of publish message
+ * @retval size_t                 : length of publish control packet, fail = 0;
  */
-size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message);
+size_t mqtt_publish(mqtt_client_t *client, char *publish_topic, char *publish_message, uint16_t publish_message_length);
 
 
 
