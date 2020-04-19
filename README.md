@@ -14,8 +14,10 @@ MQTT version 3.1 client API libary for Mosquitto Broker in C.
 ![Last Commit:date](https://img.shields.io/github/last-commit/adimalla/MQTT-3.1-C?label=Last%20Commit&style=plastic)
 
 ## Description
-The Goal of the project is to create an MQTT client API, portable in both POSIX and non POSIX embedded system enviornments. The APIs are minimal, easy to understand and independent of posix sockets and other socket based or networking APIs and are implemented in C for ease of portablity in resource constrained embedded devices.</br>
-**Supports only upto 255 bytes message length**
+The Goal of the project is to create an MQTT client API, portable in both POSIX and non POSIX embedded system enviornments. The APIs are minimal, easy to understand and independent of posix sockets and other socket based or networking APIs and are implemented in C for ease of portablity in resource constrained embedded devices.
+</br>
+</br>
+**!!Currently Supports only upto 255 bytes message length!!**
 
 ## Features
 Currently the APIs are tesed with C console applications under Linux enviornment using socket API and comes with publisher state machine example code that supports quality of service upto level 2 and message retention at MQTT broker.
