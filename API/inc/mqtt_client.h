@@ -152,12 +152,12 @@ typedef struct mqtt_header
 /* MQTT Payload options */
 typedef struct mqtt_payload_opts
 {
-	uint16_t             client_id_length;             /*!< Client ID Length                                  */
-	char                 client_id[CLIENT_ID_LENGTH];  /*!< Client ID, length defined in mqtt_config.h        */
-	uint16_t             user_name_length;             /*!< Client User Name Length                           */
-	char                 user_name[USER_NAME_LENGTH];  /*!< Client User Name, length defined in mqtt_config.h */
-	uint16_t             password_length;              /*!< Client Password Length                            */
-	char                 password[PASSWORD_LENGTH];    /*!< Client Password, length defined in mqtt_config.h  */
+	uint16_t client_id_length;             /*!< Client ID Length                                  */
+	char     client_id[CLIENT_ID_LENGTH];  /*!< Client ID, length defined in mqtt_config.h        */
+	uint16_t user_name_length;             /*!< Client User Name Length                           */
+	char     user_name[USER_NAME_LENGTH];  /*!< Client User Name, length defined in mqtt_config.h */
+	uint16_t password_length;              /*!< Client Password Length                            */
+	char     password[PASSWORD_LENGTH];    /*!< Client Password, length defined in mqtt_config.h  */
 
 }payload_opts_t;
 
